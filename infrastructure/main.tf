@@ -11,10 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-############################
 # VPC
-############################
-
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -33,7 +30,6 @@ resource "aws_internet_gateway" "main" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
@@ -45,10 +41,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-############################
-# SECURITY GROUP
-############################
-
+# Security Group
 resource "aws_security_group" "main" {
   name   = "${var.project_name}-sg"
   vpc_id = aws_vpc.main.id
@@ -65,22 +58,18 @@ resource "aws_security_group" "main" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  # Agregamos el puerto 8081 para el segundo backend
   ingress {
     from_port   = 8081
     to_port     = 8081
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -98,33 +87,24 @@ resource "aws_security_group_rule" "mysql_internal" {
   source_security_group_id = aws_security_group.main.id
 }
 
-############################
-# ECR
-############################
-
+# ECR Repositories
 resource "aws_ecr_repository" "backend_despachos" {
   name         = "${var.project_name}-backend-despachos"
   force_delete = true
 }
-
 resource "aws_ecr_repository" "backend_ventas" {
   name         = "${var.project_name}-backend-ventas"
   force_delete = true
 }
-
 resource "aws_ecr_repository" "frontend" {
   name         = "${var.project_name}-frontend"
   force_delete = true
 }
 
-############################
-# EC2 MYSQL
-############################
-
+# EC2 MySQL
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
-
   filter {
     name   = "name"
     values = ["al2023-ami-*-x86_64"]
@@ -143,23 +123,14 @@ resource "aws_instance" "db" {
     volume_type = "gp3"
   }
 
-  # Se reemplazaron los valores quemados por las variables que definiste
   user_data = <<-EOF
     #!/bin/bash
-
     yum update -y
     yum install -y docker
-
     systemctl start docker
     systemctl enable docker
-
-    until docker info > /dev/null 2>&1; do
-      echo "Esperando Docker..."
-      sleep 3
-    done
-
+    until docker info > /dev/null 2>&1; do sleep 3; done
     docker system prune -af
-
     docker run -d \
     --name mysql \
     -e MYSQL_ROOT_PASSWORD=${var.db_password} \
@@ -173,168 +144,106 @@ resource "aws_instance" "db" {
     --performance-schema=OFF
   EOF
 
-  tags = {
-    Name = "${var.project_name}-mysql"
-  }
+  tags = { Name = "${var.project_name}-mysql" }
 }
 
-#CLOUD WATCH
+# CloudWatch
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = 7
 }
 
-############################
-# ECS
-############################
-
+# ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 }
 
-data "aws_iam_role" "lab" {
-  name = "LabRole"
-}
+//data "aws_iam_role" "lab" {
+//  name = "LabRole"  # Asegúrate de que este rol exista en tu cuenta
+//}
 
-############################
-# TASK APP (frontend + 2 backends)
-############################
-
+# Task Definition
 resource "aws_ecs_task_definition" "app" {
   family                   = "${var.project_name}-app"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "1024"
   memory                   = "2048"
-  execution_role_arn       = data.aws_iam_role.lab.arn
+  execution_role_arn       = ""
+  task_role_arn            = ""
 
   container_definitions = jsonencode([
-
     {
       name  = "backend-despachos"
       image = "${aws_ecr_repository.backend_despachos.repository_url}:latest"
-
-      portMappings = [
-        {
-          containerPort = 8080
-        }
-      ]
+      portMappings = [{ containerPort = 8080 }]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health/readiness || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:8080/swagger-ui.html || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 5
         startPeriod = 120
       }
-
       environment = [
-        {
-            name  = "DB_HOST",
-            value = aws_instance.db.private_ip
-        },
-        {
-            name  = "SPRING_DATASOURCE_URL"
-            value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}"
-        },
-        {
-            name  = "SPRING_DATASOURCE_USERNAME"
-            value = "root"
-        },
-        {
-            name  = "SPRING_DATASOURCE_PASSWORD"
-            value = var.db_password
-        }
+        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true" },
+        { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
+        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password }
       ]
       logConfiguration = {
-        logDriver = "awslogs",
+        logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
-          awslogs-region        = var.aws_region,
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name
+          awslogs-region        = var.aws_region
           awslogs-stream-prefix = "backend-despachos"
         }
       }
     },
-
     {
       name  = "backend-ventas"
       image = "${aws_ecr_repository.backend_ventas.repository_url}:latest"
-
-      portMappings = [
-        {
-          containerPort = 8081
-        }
-      ]
+      portMappings = [{ containerPort = 8081 }]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health/readiness || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:8081/swagger-ui.html || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 5
         startPeriod = 120
       }
-
       environment = [
-        {
-            name  = "DB_HOST",
-            value = aws_instance.db.private_ip
-        },
-        {
-            name  = "SPRING_DATASOURCE_URL"
-            value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}"
-        },
-        {
-            name  = "SPRING_DATASOURCE_USERNAME"
-            value = "root"
-        },
-        {
-            name  = "SPRING_DATASOURCE_PASSWORD"
-            value = var.db_password
-        }
+        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true" },
+        { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
+        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password }
       ]
       logConfiguration = {
-        logDriver = "awslogs",
+        logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
-          awslogs-region        = var.aws_region,
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name
+          awslogs-region        = var.aws_region
           awslogs-stream-prefix = "backend-ventas"
         }
       }
     },
-
     {
       name  = "frontend"
       image = "${aws_ecr_repository.frontend.repository_url}:latest"
-
-      portMappings = [
-        {
-          containerPort = 80
-        }
-      ]
-
+      portMappings = [{ containerPort = 80 }]
       dependsOn = [
-        {
-          containerName = "backend-despachos",
-          condition = "START"
-        },
-        {
-          containerName = "backend-ventas",
-          condition = "START"
-        }
+        { containerName = "backend-despachos", condition = "HEALTHY" },
+        { containerName = "backend-ventas",    condition = "HEALTHY" }
       ]
       logConfiguration = {
-        logDriver = "awslogs",
+        logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.ecs.name,
-          awslogs-region        = var.aws_region,
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name
+          awslogs-region        = var.aws_region
           awslogs-stream-prefix = "frontend"
         }
       }
     }
-
   ])
 }
 
-
-
+# ECS Service
 resource "aws_ecs_service" "app" {
   name            = "app"
   cluster         = aws_ecs_cluster.main.id
@@ -343,7 +252,6 @@ resource "aws_ecs_service" "app" {
   desired_count   = 1
 
   force_new_deployment = true
-
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 
