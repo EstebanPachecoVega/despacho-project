@@ -158,9 +158,9 @@ resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 }
 
-//data "aws_iam_role" "lab" {
-//  name = "LabRole"  # Asegúrate de que este rol exista en tu cuenta
-//}
+data "aws_iam_role" "lab" {
+  name = "LabRole"  # Asegúrate de que este rol exista en tu cuenta
+}
 
 # Task Definition
 resource "aws_ecs_task_definition" "app" {
@@ -169,8 +169,8 @@ resource "aws_ecs_task_definition" "app" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "1024"
   memory                   = "2048"
-  execution_role_arn       = ""
-  task_role_arn            = ""
+  execution_role_arn       = data.aws_iam_role.lab.arn
+  task_role_arn            = null
 
   container_definitions = jsonencode([
     {
