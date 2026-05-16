@@ -521,8 +521,12 @@ VITE_API_VENTAS_URL=http://<IP_PUBLICA>:8081
 
 ## Contribuidores
 
-<a href="https://github.com/OWNER/REPO/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=OWNER/REPO" />
+<a href="https://github.com/Rorrop24">
+  <img src="https://github.com/Rorrop24.png" width="60px;" alt="Rodrigo Catalan"/>
+</a>
+
+<a href="https://github.com/XxXCamilongoXxX">
+  <img src="https://github.com/XxXCamilongoXxX.png" width="60px;" alt="Camilo "/>
 </a>
 
 ---
