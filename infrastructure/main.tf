@@ -182,12 +182,13 @@ resource "aws_ecs_task_definition" "app" {
         interval    = 30
         timeout     = 5
         retries     = 5
-        startPeriod = 120
+        startPeriod = 180
       }
       environment = [
-        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true" },
+        { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
         { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
-        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password }
+        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password },
+        { name = "DB_HOST", value = aws_instance.db.private_ip }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -207,12 +208,13 @@ resource "aws_ecs_task_definition" "app" {
         interval    = 30
         timeout     = 5
         retries     = 5
-        startPeriod = 120
+        startPeriod = 180
       }
       environment = [
-        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true" },
+        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
         { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
-        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password }
+        { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password },
+        { name = "DB_HOST", value = aws_instance.db.private_ip }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -228,8 +230,8 @@ resource "aws_ecs_task_definition" "app" {
       image = "${aws_ecr_repository.frontend.repository_url}:latest"
       portMappings = [{ containerPort = 80 }]
       dependsOn = [
-        { containerName = "backend-despachos", condition = "HEALTHY" },
-        { containerName = "backend-ventas",    condition = "HEALTHY" }
+        { containerName = "backend-despachos", condition = "START" },
+        { containerName = "backend-ventas",    condition = "START" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
