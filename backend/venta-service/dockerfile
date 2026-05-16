@@ -1,0 +1,18 @@
+#Multi-stage
+#Stage 1
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+#Stage 2
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+# Instalar netcat para el healthcheck
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /build/target/*.jar app.jar
+EXPOSE 8081
+
+# Esperar MySQL antes de iniciar
+ENTRYPOINT ["sh", "-c", "until nc -z $DB_HOST 3306; do echo 'Waiting for MySQL...'; sleep 5; done; java -jar app.jar"]

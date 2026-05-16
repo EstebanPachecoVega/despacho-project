@@ -1,0 +1,26 @@
+# Terraform
+**/terraform.tfvars
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfplan
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production
+
+# Backend (Java)
+**/target/
+**/*.jar
+**/*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
