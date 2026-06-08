@@ -123,20 +123,64 @@ resource "aws_instance" "db" {
     volume_type = "gp3"
   }
 
+  ebs_block_device {
+    device_name           = "/dev/sdf"
+    volume_size           = var.db_volume_size
+    volume_type           = "gp3"
+    delete_on_termination = false
+    tags = {
+      Name = "${var.project_name}-mysql-data"
+    }
+  }
+
   user_data = <<-EOF
     #!/bin/bash
+    set -euo pipefail
+
+    MYSQL_DATA_DIR="/var/lib/mysql"
+    MYSQL_DEVICE=""
+
     yum update -y
     yum install -y docker
     systemctl start docker
     systemctl enable docker
     until docker info > /dev/null 2>&1; do sleep 3; done
+
+    for device in /dev/nvme1n1 /dev/xvdf /dev/sdf; do
+      if [ -b "$device" ]; then
+        MYSQL_DEVICE="$device"
+        break
+      fi
+    done
+
+    if [ -z "$MYSQL_DEVICE" ]; then
+      echo "No se encontro el volumen persistente para MySQL" >&2
+      exit 1
+    fi
+
+    if ! blkid "$MYSQL_DEVICE" > /dev/null 2>&1; then
+      mkfs -t xfs "$MYSQL_DEVICE"
+    fi
+
+    mkdir -p "$MYSQL_DATA_DIR"
+    if ! mountpoint -q "$MYSQL_DATA_DIR"; then
+      mount "$MYSQL_DEVICE" "$MYSQL_DATA_DIR"
+    fi
+
+    MYSQL_DEVICE_UUID="$(blkid -s UUID -o value "$MYSQL_DEVICE")"
+    if ! grep -q "$MYSQL_DEVICE_UUID" /etc/fstab; then
+      echo "UUID=$MYSQL_DEVICE_UUID $MYSQL_DATA_DIR xfs defaults,nofail 0 2" >> /etc/fstab
+    fi
+
     docker system prune -af
+    docker rm -f mysql || true
     docker run -d \
     --name mysql \
     -e MYSQL_ROOT_PASSWORD=${var.db_password} \
     -e MYSQL_DATABASE=${var.db_name} \
     -e MYSQL_ROOT_HOST=% \
     -p 3306:3306 \
+    -v /var/lib/mysql:/var/lib/mysql \
     --log-opt max-size=10m \
     --log-opt max-file=3 \
     mysql:8-oracle \
@@ -159,7 +203,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 data "aws_iam_role" "lab" {
-  name = "LabRole"  # Asegúrate de que este rol exista en tu cuenta
+  name = "LabRole" # Asegúrate de que este rol exista en tu cuenta
 }
 
 # Task Definition
@@ -174,8 +218,8 @@ resource "aws_ecs_task_definition" "app" {
 
   container_definitions = jsonencode([
     {
-      name  = "backend-despachos"
-      image = "${aws_ecr_repository.backend_despachos.repository_url}:latest"
+      name         = "backend-despachos"
+      image        = "${aws_ecr_repository.backend_despachos.repository_url}:latest"
       portMappings = [{ containerPort = 8080 }]
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:8080/swagger-ui.html || exit 1"]
@@ -200,8 +244,8 @@ resource "aws_ecs_task_definition" "app" {
       }
     },
     {
-      name  = "backend-ventas"
-      image = "${aws_ecr_repository.backend_ventas.repository_url}:latest"
+      name         = "backend-ventas"
+      image        = "${aws_ecr_repository.backend_ventas.repository_url}:latest"
       portMappings = [{ containerPort = 8081 }]
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:8081/swagger-ui.html || exit 1"]
@@ -211,7 +255,7 @@ resource "aws_ecs_task_definition" "app" {
         startPeriod = 180
       }
       environment = [
-        { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
+        { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
         { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
         { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password },
         { name = "DB_HOST", value = aws_instance.db.private_ip }
@@ -226,12 +270,12 @@ resource "aws_ecs_task_definition" "app" {
       }
     },
     {
-      name  = "frontend"
-      image = "${aws_ecr_repository.frontend.repository_url}:latest"
+      name         = "frontend"
+      image        = "${aws_ecr_repository.frontend.repository_url}:latest"
       portMappings = [{ containerPort = 80 }]
       dependsOn = [
         { containerName = "backend-despachos", condition = "START" },
-        { containerName = "backend-ventas",    condition = "START" }
+        { containerName = "backend-ventas", condition = "START" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -253,7 +297,7 @@ resource "aws_ecs_service" "app" {
   launch_type     = "FARGATE"
   desired_count   = 1
 
-  force_new_deployment = true
+  force_new_deployment               = true
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 

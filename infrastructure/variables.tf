@@ -18,3 +18,8 @@ variable "db_name" {
   type        = string
   default     = "despachodb"
 }
+variable "db_volume_size" {
+  description = "Tamaño en GiB del volumen persistente de datos de MySQL"
+  type        = number
+  default     = 30
+}

@@ -6,6 +6,8 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
       - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -20,6 +22,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_HOST: mysql
     depends_on:
       mysql:
         condition: service_healthy
@@ -32,6 +35,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_HOST: mysql
     depends_on:
       mysql:
         condition: service_healthy
@@ -43,3 +47,7 @@ services:
     depends_on:
       - back-despachos
       - back-ventas
+
+volumes:
+  mysql_data:
+    name: despacho_mysql_data
