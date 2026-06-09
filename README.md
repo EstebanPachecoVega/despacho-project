@@ -550,5 +550,3 @@ Para problemas técnicos:
 - Revisa los logs en CloudWatch Logs
 - Verifica el estado de las tareas en ECS Console
 - Comprueba que MySQL esté corriendo (`docker ps` en EC2)
-
-`DB_USERNAME` debe ser el usuario de aplicacion, por ejemplo `despacho_app`, no `root`.
