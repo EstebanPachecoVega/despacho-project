@@ -1,4 +1,6 @@
 key_pair_name = "tu-key-pair-name"
-db_password   = "TuClaveSegura123"
-db_name       = "despachodb"
-db_volume_size = 30
+db_root_password = "TuClaveRootSegura123"
+db_username      = "despacho_app"
+db_password      = "TuClaveAppSegura123"
+db_name          = "despachodb"
+db_volume_size   = 30

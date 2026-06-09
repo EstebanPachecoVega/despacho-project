@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: despacho-project
+data:
+  DB_HOST: "__DB_HOST__"
+  DB_NAME: "__DB_NAME__"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://__DB_HOST__:3306/__DB_NAME__?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true"

@@ -4,6 +4,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -18,11 +20,8 @@ services:
     build: ./backend/despacho-service  
     ports:
       - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      DB_HOST: mysql
+    env_file:
+      - ./backend/despacho-service/.env
     depends_on:
       mysql:
         condition: service_healthy
@@ -30,12 +29,9 @@ services:
   back-ventas:
     build: ./backend/venta-service    
     ports:
-      - "8081:8080" 
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      DB_HOST: mysql
+      - "8081:8081" 
+    env_file:
+      - ./backend/venta-service/.env
     depends_on:
       mysql:
         condition: service_healthy

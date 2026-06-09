@@ -176,8 +176,10 @@ resource "aws_instance" "db" {
     docker rm -f mysql || true
     docker run -d \
     --name mysql \
-    -e MYSQL_ROOT_PASSWORD=${var.db_password} \
+    -e MYSQL_ROOT_PASSWORD=${var.db_root_password} \
     -e MYSQL_DATABASE=${var.db_name} \
+    -e MYSQL_USER=${var.db_username} \
+    -e MYSQL_PASSWORD=${var.db_password} \
     -e MYSQL_ROOT_HOST=% \
     -p 3306:3306 \
     -v /var/lib/mysql:/var/lib/mysql \
@@ -203,7 +205,7 @@ resource "aws_ecs_cluster" "main" {
 }
 
 data "aws_iam_role" "lab" {
-  name = "LabRole" # Asegúrate de que este rol exista en tu cuenta
+  name = "LabRole"
 }
 
 # Task Definition
@@ -230,7 +232,7 @@ resource "aws_ecs_task_definition" "app" {
       }
       environment = [
         { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
-        { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
+        { name = "SPRING_DATASOURCE_USERNAME", value = var.db_username },
         { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password },
         { name = "DB_HOST", value = aws_instance.db.private_ip }
       ]
@@ -256,7 +258,7 @@ resource "aws_ecs_task_definition" "app" {
       }
       environment = [
         { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://${aws_instance.db.private_ip}:3306/${var.db_name}?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true" },
-        { name = "SPRING_DATASOURCE_USERNAME", value = "root" },
+        { name = "SPRING_DATASOURCE_USERNAME", value = var.db_username },
         { name = "SPRING_DATASOURCE_PASSWORD", value = var.db_password },
         { name = "DB_HOST", value = aws_instance.db.private_ip }
       ]
