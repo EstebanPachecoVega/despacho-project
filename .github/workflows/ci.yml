@@ -19,12 +19,14 @@ jobs:
       mysql:
         image: mysql:8
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
           MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-cmd="mysqladmin ping -h localhost -uroot -pdespacho_root_2026"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -54,8 +56,8 @@ jobs:
         working-directory: ${{ matrix.service }}
         env:
           SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/despachodb
-          SPRING_DATASOURCE_USERNAME: root
-          SPRING_DATASOURCE_PASSWORD: root
+          SPRING_DATASOURCE_USERNAME: despacho_app
+          SPRING_DATASOURCE_PASSWORD: despacho_app_2026
         run: ./mvnw clean verify
 
   frontend:
@@ -111,14 +113,18 @@ jobs:
 
       - name: Validar compose
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
           MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
         run: docker compose config
 
       - name: Construir imagenes
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
           MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
         run: docker compose build
 
   terraform:
