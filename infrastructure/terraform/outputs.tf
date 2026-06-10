@@ -17,3 +17,19 @@ output "frontend_repository_url" {
   description = "Repositorio ECR del frontend."
   value       = aws_ecr_repository.frontend.repository_url
 }
+
+output "eks_cluster_name" {
+  description = "Nombre del cluster EKS."
+  value       = aws_eks_cluster.main.name
+}
+
+output "eks_cluster_endpoint" {
+  description = "Endpoint del cluster EKS."
+  value       = aws_eks_cluster.main.endpoint
+}
+
+output "eks_cluster_ca_cert" {
+  description = "Certificado CA del cluster EKS."
+  value       = aws_eks_cluster.main.certificate_authority[0].data
+  sensitive   = true
+}
