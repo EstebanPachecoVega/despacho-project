@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -26,21 +27,31 @@ public class DespachoServiceImpl implements DespachoService{
     }
 
     @Override
-    public Despacho updateDespacho(Long idDespacho, Despacho despacho) throws DespachoNotFoundException {
+    public Despacho updateDespacho(Long idDespacho, Despacho despacho) {
         return despachoRepository.findById(idDespacho).map(existingDespacho -> {
-            existingDespacho.setFechaDespacho(despacho.getFechaDespacho());
-            existingDespacho.setPatenteCamion(despacho.getPatenteCamion());
+            if (Objects.nonNull(despacho.getFechaDespacho())) {
+                existingDespacho.setFechaDespacho(despacho.getFechaDespacho());
+            }
+            if (Objects.nonNull(despacho.getPatenteCamion()) && !despacho.getPatenteCamion().trim().isEmpty()) {
+                existingDespacho.setPatenteCamion(despacho.getPatenteCamion());
+            }
             existingDespacho.setIntento(despacho.getIntento());
-            existingDespacho.setIdCompra(despacho.getIdCompra());
-            existingDespacho.setDireccionCompra(despacho.getDireccionCompra());
-            existingDespacho.setValorCompra(despacho.getValorCompra());
+            if (Objects.nonNull(despacho.getIdCompra())) {
+                existingDespacho.setIdCompra(despacho.getIdCompra());
+            }
+            if (Objects.nonNull(despacho.getDireccionCompra()) && !despacho.getDireccionCompra().trim().isEmpty()) {
+                existingDespacho.setDireccionCompra(despacho.getDireccionCompra());
+            }
+            if (Objects.nonNull(despacho.getValorCompra())) {
+                existingDespacho.setValorCompra(despacho.getValorCompra());
+            }
             existingDespacho.setDespachado(despacho.isDespachado());
             return despachoRepository.save(existingDespacho);
         }).orElseThrow(() -> new DespachoNotFoundException("Despacho no encontrado con ID: " + idDespacho));
     }
 
     @Override
-    public void deleteDespacho(Long idDespacho) throws DespachoNotFoundException {
+    public void deleteDespacho(Long idDespacho) {
         Optional<Despacho> despacho = despachoRepository.findById(idDespacho);
         if(!despacho.isPresent()){
             throw new DespachoNotFoundException("¡No es posible eliminar! No existe despacho con el ID:" + idDespacho);
@@ -50,7 +61,7 @@ public class DespachoServiceImpl implements DespachoService{
     }
 
     @Override
-    public Despacho findById(Long idDespacho) throws DespachoNotFoundException {
+    public Despacho findById(Long idDespacho) {
         Optional<Despacho> despacho = despachoRepository.findById(idDespacho);
         if(!despacho.isPresent()) throw new DespachoNotFoundException("¡No existe despacho con el ID:" + idDespacho);
         return despacho.get();

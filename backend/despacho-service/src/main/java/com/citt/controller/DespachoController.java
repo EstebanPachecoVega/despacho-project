@@ -1,6 +1,5 @@
 package com.citt.controller;
 
-import com.citt.exceptions.DespachoNotFoundException;
 import com.citt.persistence.entity.Despacho;
 import com.citt.persistence.services.DespachoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +13,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("api/v1/despachos")
 @Tag(name = "Despacho", description = "Controlador para gestionar despachos")
@@ -40,7 +38,7 @@ public class DespachoController {
     @PutMapping("/{idDespacho}")
     public ResponseEntity<Despacho> actualizarDespacho(
             @PathVariable Long idDespacho,
-            @Valid @RequestBody Despacho despacho) throws DespachoNotFoundException {
+            @Valid @RequestBody Despacho despacho) {
         Despacho despachoActualizado = despachoService.updateDespacho(idDespacho, despacho);
         return ResponseEntity.ok(despachoActualizado);
     }
@@ -54,14 +52,14 @@ public class DespachoController {
     @Operation(summary = "Obtener un despacho por ID")
     @GetMapping("/{idDespacho}")
     public ResponseEntity<Despacho> obtenerDespacho(
-            @PathVariable Long idDespacho) throws DespachoNotFoundException {
+            @PathVariable Long idDespacho) {
         Despacho despacho = despachoService.findById(idDespacho);
         return ResponseEntity.ok(despacho);
     }
 
     @Operation(summary = "Eliminar un despacho por ID")
     @DeleteMapping("/{idDespacho}")
-    public ResponseEntity<Void> eliminarDespacho(@PathVariable Long idDespacho) throws DespachoNotFoundException {
+    public ResponseEntity<Void> eliminarDespacho(@PathVariable Long idDespacho) {
         despachoService.deleteDespacho(idDespacho);
         return ResponseEntity.noContent().build();
     }

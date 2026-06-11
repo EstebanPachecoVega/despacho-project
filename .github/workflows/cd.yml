@@ -91,7 +91,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f infrastructure/k8s/namespace.yaml
           kubectl -n "${K8S_NAMESPACE}" create secret generic mysql-credentials \
             --from-literal=SPRING_DATASOURCE_USERNAME="${DB_USERNAME}" \
             --from-literal=SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}" \
@@ -104,7 +104,7 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
         run: |
           mkdir -p .k8s-rendered
-          cp k8s/*.yaml .k8s-rendered/
+          cp infrastructure/k8s/*.yaml .k8s-rendered/
 
           for file in .k8s-rendered/*.yaml; do
             sed -i \

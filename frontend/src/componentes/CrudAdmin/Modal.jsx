@@ -9,7 +9,7 @@ export const Modal = ({ open, onClose, children }) => {
     >
       <div
         onClick={(e) => {
-          e.stopPropagation;
+          e.stopPropagation();
         }}
         className={`flex flex-col items-end bg-white  transition-all rounded-lg ${
           open ? "scale-90 opacity-100" : "scale-100 opacity-0"

@@ -1,6 +1,5 @@
 package com.citt.controller;
 
-import com.citt.exceptions.VentaNotFoundException;
 import com.citt.persistence.entity.Venta;
 import com.citt.persistence.services.VentaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +13,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.List;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("api/v1/ventas")
 @Tag(name = "Venta", description = "Controlador para gestionar ventas")
@@ -37,7 +35,7 @@ public class VentaController {
 
     @PutMapping("/{idVenta}")
     @Operation(summary = "Actualizar una venta existente", description = "Actualiza los detalles de una venta existente")
-    public ResponseEntity<Venta> actualizarVenta(@Valid @PathVariable Long idVenta, @RequestBody Venta venta) throws VentaNotFoundException {
+    public ResponseEntity<Venta> actualizarVenta(@PathVariable Long idVenta, @Valid @RequestBody Venta venta) {
         Venta ventaActualizada = ventaService.updateVenta(idVenta, venta);
         return ResponseEntity.ok(ventaActualizada);
     }
@@ -50,14 +48,14 @@ public class VentaController {
 
     @GetMapping("/{idVenta}")
     @Operation(summary = "Obtener una venta por ID", description = "Devuelve los detalles de una venta específica")
-    public ResponseEntity<Venta> obtenerVenta(@PathVariable Long idVenta) throws VentaNotFoundException {
+    public ResponseEntity<Venta> obtenerVenta(@PathVariable Long idVenta) {
         Venta venta = ventaService.findById(idVenta);
         return ResponseEntity.ok(venta); // Retornamos la venta encontrada con un estado 200 (OK)
     }
 
     @DeleteMapping("/{idVenta}")
     @Operation(summary = "Eliminar una venta", description = "Elimina una venta del sistema")
-    public ResponseEntity<Void> eliminarVenta(@PathVariable Long idVenta) throws VentaNotFoundException {
+    public ResponseEntity<Void> eliminarVenta(@PathVariable Long idVenta) {
         ventaService.deleteVenta(idVenta);
         return ResponseEntity.noContent().build(); // Respuesta 204 No Content si se elimina correctamente
     }

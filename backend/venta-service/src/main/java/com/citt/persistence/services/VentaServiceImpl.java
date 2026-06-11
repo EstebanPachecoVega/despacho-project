@@ -27,7 +27,7 @@ public class VentaServiceImpl implements VentaService{
     }
 
     @Override
-    public Venta updateVenta(Long idVenta, Venta venta) throws VentaNotFoundException {
+    public Venta updateVenta(Long idVenta, Venta venta) {
         Optional<Venta> optionalVenta = ventaRepository.findById(idVenta);
 
         if (optionalVenta.isPresent()) {
@@ -57,7 +57,7 @@ public class VentaServiceImpl implements VentaService{
     }
 
     @Override
-    public void deleteVenta(Long idVenta) throws VentaNotFoundException {
+    public void deleteVenta(Long idVenta) {
         Optional<Venta> venta = ventaRepository.findById(idVenta);
         if(!venta.isPresent()) {
             throw new VentaNotFoundException("¡No es posible eliminar! No existe venta con el ID: " + idVenta);
@@ -67,7 +67,7 @@ public class VentaServiceImpl implements VentaService{
     }
 
     @Override
-    public Venta findById(Long idVenta) throws VentaNotFoundException {
+    public Venta findById(Long idVenta) {
         Optional<Venta> venta = ventaRepository.findById(idVenta);
         if(!venta.isPresent()) throw new VentaNotFoundException("Venta no encontrada con el ID: " + idVenta);
         return venta.get();

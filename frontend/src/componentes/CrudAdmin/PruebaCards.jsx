@@ -2,10 +2,12 @@ import { useState } from "react";
 import { CardComponent } from "./CardComponent";
 import { TableCompras } from "./TableCompras";
 import { TableDespachos } from "./TableDespachos";
+import { SearchBar } from "./SearchBar";
 
 export const PruebaCards = () => {
   const [tablaCompras, setTablaCompras] = useState(false);
   const [tablaOrdenes, setTablaOrdenes] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   return (
     <section>
@@ -30,9 +32,11 @@ export const PruebaCards = () => {
         />
       </div>
 
+      <SearchBar searchTerm={searchTerm} onSearch={setSearchTerm} />
+
       <section>
-        {tablaCompras && <TableCompras />}
-        {tablaOrdenes && <TableDespachos />}
+        {tablaCompras && <TableCompras searchTerm={searchTerm} />}
+        {tablaOrdenes && <TableDespachos searchTerm={searchTerm} />}
       </section>
     </section>
   );

@@ -29,7 +29,7 @@ resource "aws_ecs_task_definition" "app" {
       image        = "${aws_ecr_repository.backend_despachos.repository_url}:latest"
       portMappings = [{ containerPort = 8080 }]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8080/swagger-ui.html || exit 1"]
+        command     = ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 5
@@ -55,7 +55,7 @@ resource "aws_ecs_task_definition" "app" {
       image        = "${aws_ecr_repository.backend_ventas.repository_url}:latest"
       portMappings = [{ containerPort = 8081 }]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8081/swagger-ui.html || exit 1"]
+        command     = ["CMD-SHELL", "curl -sf http://localhost:8081/actuator/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 5
