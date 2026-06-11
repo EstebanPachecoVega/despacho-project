@@ -111,6 +111,12 @@ jobs:
       - name: Checkout del codigo
         uses: actions/checkout@v4
 
+      - name: Preparar archivos .env
+        run: |
+          cp .env.example .env
+          cp backend/despacho-service/.env.example backend/despacho-service/.env
+          cp backend/venta-service/.env.example backend/venta-service/.env
+
       - name: Validar compose
         env:
           MYSQL_ROOT_PASSWORD: despacho_root_2026
