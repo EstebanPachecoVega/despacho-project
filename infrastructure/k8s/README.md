@@ -2,21 +2,18 @@
 
 Estos manifiestos despliegan los dos backends Spring Boot y el frontend en Kubernetes/EKS.
 
-## GitHub Secrets esperados
+## GitHub Secrets necesarios
 
-El Secret real de Kubernetes no se versiona. El workflow de CD lo crea desde GitHub Secrets:
+El workflow CD ejecuta Terraform automáticamente, por lo que solo se requieren estas credenciales AWS y la password de MySQL:
 
-- `AWS_ACCOUNT_ID`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_SESSION_TOKEN`
-- `EKS_CLUSTER_NAME`
-- `DB_HOST`
-- `DB_NAME`
-- `DB_USERNAME`
-- `DB_PASSWORD`
+| Secret | Descripción |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | Access Key de AWS (temporal en AWS Academy) |
+| `AWS_SECRET_ACCESS_KEY` | Secret Key de AWS (temporal en AWS Academy) |
+| `AWS_SESSION_TOKEN` | Session Token de AWS (temporal en AWS Academy) |
+| `DB_PASSWORD` | Password del usuario app de MySQL (`despacho_app_2026`) |
 
-`DB_HOST` puede salir del output Terraform `db_private_ip`. `DB_USERNAME` debe ser el usuario de aplicacion, por ejemplo `despacho_app`, no `root`.
+El resto de valores (`DB_HOST`, `AWS_ACCOUNT_ID`, `EKS_CLUSTER_NAME`, etc.) los obtiene el CD desde Terraform automáticamente.
 
 ## Placeholders
 

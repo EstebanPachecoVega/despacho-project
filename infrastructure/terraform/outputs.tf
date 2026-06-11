@@ -1,3 +1,10 @@
+data "aws_caller_identity" "current" {}
+
+output "aws_account_id" {
+  description = "ID de la cuenta AWS."
+  value       = data.aws_caller_identity.current.account_id
+}
+
 output "db_private_ip" {
   description = "IP privada de la instancia MySQL que consumen los backends."
   value       = aws_instance.db.private_ip
