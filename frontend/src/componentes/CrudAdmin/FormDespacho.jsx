@@ -11,7 +11,7 @@ export const FormDespacho = ({ venta, onClose }) => {
       fechaDespacho: data.fechaDespacho,
       patenteCamion: data.patenteCamion,
       intento: 0,
-      entregado: false,
+      despachado: false,
       idCompra: venta.idVenta,
       direccionCompra: venta.direccionCompra,
       valorCompra: venta.valorCompra,
@@ -24,32 +24,38 @@ export const FormDespacho = ({ venta, onClose }) => {
     console.log("Datos del formulario:", jsonData);
 
     try {
+      await axios.post("/api/v1/despachos", jsonData, {
+        headers:{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
       await axios.put(
-        `http://192.168.30/api/v1/ventas/${venta.idVenta}`,
+        `/api/v1/ventas/${venta.idVenta}`,
         jsonDataSales,
         {
           headers:{
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-      }
+          }
         }
       );
-      await axios.post("http://192.168.320/api/v1/despachos", jsonData, {
-        headers:{
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-    }
-      });
       Swal.fire({
         title: "Despacho registrado 🛻!",
         text: "El despacho ha sido generado con éxito en la base de datos",
         icon: "success",
         confirmButtonText: "Aceptar",
       });
+      onClose();
     } catch (error) {
       console.error("Error en la solicitud:", error);
+      Swal.fire({
+        title: "Error",
+        text: error.response?.data?.message || "Ocurrió un error al registrar el despacho",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
-    onClose();
   };
   return (
     <>

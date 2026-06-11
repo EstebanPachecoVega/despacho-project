@@ -16,13 +16,13 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
 
     try {
       await axios.put(
-        `http://192.168.320/api/v1/despachos/${despacho.idDespacho}`,
+        `/api/v1/despachos/${despacho.idDespacho}`,
         jsonData,
         {
           headers:{
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-      }
+          }
         }
       );
       Swal.fire({
@@ -31,10 +31,16 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
         icon: "success",
         confirmButtonText: "Aceptar",
       });
+      onClose();
     } catch (error) {
       console.error("Error en la solicitud:", error);
+      Swal.fire({
+        title: "Error",
+        text: error.response?.data?.message || "Ocurrió un error al modificar el despacho",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
-    onClose();
   };
 
   return (

@@ -3,11 +3,11 @@ import { Modal } from "./Modal";
 import { FormDespacho } from "./FormDespacho";
 import axios from "axios";
 
-export const TableCompras = () => {
+export const TableCompras = ({ searchTerm = "" }) => {
   const [ventas, setVentas] = useState([]);
 
   const compras = async () => {
-    await axios.get("http://192.168.30/api/v1/ventas", {
+    await axios.get("/api/v1/ventas", {
       headers:{
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -50,6 +50,11 @@ export const TableCompras = () => {
               <tbody>
                 {ventas
                   .filter((venta) => !venta.despachoGenerado)
+                  .filter((venta) =>
+                    !searchTerm ||
+                    String(venta.idVenta).includes(searchTerm) ||
+                    (venta.direccionCompra && venta.direccionCompra.toLowerCase().includes(searchTerm.toLowerCase()))
+                  )
                   .map((venta) => (
                     <tr key={venta.idVenta}>
                       <td className="pr-10 py-10 items-center">

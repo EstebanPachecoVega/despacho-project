@@ -8,7 +8,7 @@ import java.util.List;
 public interface VentaService {
     List<Venta> findAllVentas();
     Venta saveVenta(Venta venta);
-    Venta updateVenta(Long idVenta, Venta venta) throws VentaNotFoundException;
-    void deleteVenta(Long idVenta) throws VentaNotFoundException;
-    Venta findById(Long idVenta) throws VentaNotFoundException;
+    Venta updateVenta(Long idVenta, Venta venta);
+    void deleteVenta(Long idVenta);
+    Venta findById(Long idVenta);
 }

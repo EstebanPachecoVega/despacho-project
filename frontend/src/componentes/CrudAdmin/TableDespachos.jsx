@@ -3,12 +3,12 @@ import axios from "axios";
 import { Modal } from "./Modal";
 import { FormCierreDespacho } from "./FormCierreDespacho";
 
-export const TableDespachos = () => {
+export const TableDespachos = ({ searchTerm = "" }) => {
   const [despachos, setDespachos] = useState([]);
 
   const despacho = async () => {
     await axios
-      .get("http://192.168.3.20/api/v1/despachos", {
+      .get("/api/v1/despachos", {
         headers:{
               'Content-Type': 'application/json',
               'Accept': 'application/json'
@@ -51,7 +51,13 @@ export const TableDespachos = () => {
               </thead>
               <tbody>
                 {despachos
-               
+                .filter((despacho) =>
+                  !searchTerm ||
+                  String(despacho.idDespacho).includes(searchTerm) ||
+                  String(despacho.idCompra).includes(searchTerm) ||
+                  (despacho.direccionCompra && despacho.direccionCompra.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (despacho.patenteCamion && despacho.patenteCamion.toLowerCase().includes(searchTerm.toLowerCase()))
+                )
                 .map((despacho) => (
                   <tr key={despacho.idDespacho}>
                     <td className="pr-10 py-10 items-center">{despacho.idDespacho}</td>
@@ -68,7 +74,7 @@ export const TableDespachos = () => {
                       {despacho.patenteCamion}
                     </td>
                     <td className="pr-10 py-10  items-center">
-                      {despacho.entregado
+                      {despacho.despachado
                         ? "Despacho entregado"
                         : "Despacho pendiente"}
                     </td>

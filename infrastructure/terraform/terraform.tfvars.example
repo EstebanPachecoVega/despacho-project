@@ -1,0 +1,13 @@
+key_pair_name      = "tu-key-pair-name"
+db_root_password   = "TuClaveRootSegura123"
+db_username        = "despacho_app"
+db_password        = "TuClaveAppSegura123"
+db_name            = "despachodb"
+db_volume_size     = 30
+
+# EKS (opcional - usa defaults si se omiten)
+# eks_cluster_name       = "despacho-project-eks"
+# eks_node_instance_type = "t3.medium"
+# eks_desired_size       = 2
+# eks_min_size           = 1
+# eks_max_size           = 3

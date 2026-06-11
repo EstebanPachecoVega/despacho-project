@@ -283,12 +283,25 @@ db_name       = "despachodb"
 
 ### Secrets en GitHub (para CI/CD)
 
-| Secret | Valor |
-|--------|-------|
-| `AWS_ACCESS_KEY_ID` | Del laboratorio Academy |
-| `AWS_SECRET_ACCESS_KEY` | Del laboratorio Academy |
-| `AWS_SESSION_TOKEN` | Del laboratorio Academy |
-| `AWS_ACCOUNT_ID` | Tu Account ID (12 dígitos) |
+GitHub Actions espera estos Secrets:
+
+- `AWS_ACCOUNT_ID`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+- `EKS_CLUSTER_NAME`
+- `DB_HOST`
+- `DB_NAME`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+
+## Despliegue en AWS con Kubernetes
+
+El directorio `k8s/` contiene los manifiestos para desplegar:
+
+- `back-despachos`
+- `back-ventas`
+- `frontend`
 
 ---
 

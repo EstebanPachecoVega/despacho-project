@@ -1,0 +1,153 @@
+name: Integracion continua
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend Spring Boot
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
+          MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pdespacho_root_2026"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - backend/despacho-service
+          - backend/venta-service
+
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Permitir ejecucion del wrapper Maven
+        working-directory: ${{ matrix.service }}
+        run: chmod +x mvnw
+
+      - name: Compilar y ejecutar pruebas
+        working-directory: ${{ matrix.service }}
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/despachodb
+          SPRING_DATASOURCE_USERNAME: despacho_app
+          SPRING_DATASOURCE_PASSWORD: despacho_app_2026
+        run: ./mvnw clean verify
+
+  frontend:
+    name: Frontend Vite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configurar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Obtener store de pnpm
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+
+      - name: Cache de pnpm
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Instalar dependencias
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Ejecutar lint
+        working-directory: frontend
+        run: pnpm lint
+
+      - name: Compilar frontend
+        working-directory: frontend
+        run: pnpm build
+
+  docker:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Validar compose
+        env:
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
+          MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
+        run: docker compose config
+
+      - name: Construir imagenes
+        env:
+          MYSQL_ROOT_PASSWORD: despacho_root_2026
+          MYSQL_DATABASE: despachodb
+          MYSQL_USER: despacho_app
+          MYSQL_PASSWORD: despacho_app_2026
+        run: docker compose build
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Formato Terraform
+        run: terraform fmt -check -recursive
+
+      - name: Inicializar Terraform
+        run: terraform init -backend=false
+
+      - name: Validar Terraform
+        run: terraform validate
