@@ -40,6 +40,11 @@ services:
     build: ./frontend                  
     ports:
       - "80:80"
+    environment:
+      BACKEND_DESPACHOS_HOST: back-despachos
+      BACKEND_DESPACHOS_PORT: 8080
+      BACKEND_VENTAS_HOST: back-ventas
+      BACKEND_VENTAS_PORT: 8081
     depends_on:
       - back-despachos
       - back-ventas

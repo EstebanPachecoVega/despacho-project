@@ -19,7 +19,7 @@ resource "aws_ecs_task_definition" "app" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "1024"
-  memory                   = "2048"
+  memory                   = "4096"
   execution_role_arn       = data.aws_iam_role.lab.arn
   task_role_arn            = null
 
@@ -80,6 +80,12 @@ resource "aws_ecs_task_definition" "app" {
       name         = "frontend"
       image        = "${aws_ecr_repository.frontend.repository_url}:latest"
       portMappings = [{ containerPort = 80 }]
+      environment = [
+        { name = "BACKEND_DESPACHOS_HOST", value = "localhost" },
+        { name = "BACKEND_DESPACHOS_PORT", value = "8080" },
+        { name = "BACKEND_VENTAS_HOST", value = "localhost" },
+        { name = "BACKEND_VENTAS_PORT", value = "8081" }
+      ]
       dependsOn = [
         { containerName = "backend-despachos", condition = "START" },
         { containerName = "backend-ventas", condition = "START" }
