@@ -269,7 +269,9 @@ MySQL no disponible al inicio:
 despacho-project/
 ├── .github/
 │   └── workflows/
-│       └── cd.yml                    # Pipeline CI/CD de GitHub Actions
+│       ├── ci.yml                    # Integración continua (tests, lint, terraform validate)
+│       ├── cd.yml                    # Despliegue continuo (push a main)
+│       └── destroy.yml              # Destrucción manual de toda la infraestructura
 ├── backend/
 │   ├── despacho-service/
 │   │   ├── Dockerfile                # Multi-stage, netcat health check
@@ -440,6 +442,19 @@ docker run -p 8080:80 despacho-frontend-test
 4. **Rollout status** — Verifica que los deployments de K8s estén saludables
 
 **Duración típica:** 5-8 minutos
+
+### Workflow de Destroy (`.github/workflows/destroy.yml`)
+
+**Trigger:** Manual via `workflow_dispatch` en GitHub Actions
+
+**Requisito:** Escribir `destroy` en el campo de confirmación para ejecutar
+
+**Jobs:**
+1. **Restaurar cache** del state de Terraform
+2. **Limpiar Kubernetes** (elimina namespace `despacho-project` para evitar que EKS se trabe)
+3. **Terraform destroy** — Elimina todos los recursos de AWS gestionados por Terraform
+
+**⚠️ Irreversible:** Borra VPC, subredes, ALB, ECS, EKS, EC2 MySQL, ECR, CloudWatch, etc.
 
 ### Observabilidad con CloudWatch
 
