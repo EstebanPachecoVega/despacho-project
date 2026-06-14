@@ -39,6 +39,11 @@ jobs:
         with:
           terraform_version: 1.8.5
 
+      - name: Limpiar recursos de Kubernetes
+        run: |
+          aws eks update-kubeconfig --name despacho-project-eks --region us-east-1 || true
+          kubectl delete namespace despacho-project --timeout=120s || true
+
       - name: Terraform Destroy
         working-directory: infrastructure/terraform
         env:
