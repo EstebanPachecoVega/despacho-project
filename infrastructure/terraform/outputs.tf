@@ -40,3 +40,25 @@ output "eks_cluster_ca_cert" {
   value       = aws_eks_cluster.main.certificate_authority[0].data
   sensitive   = true
 }
+
+# ─── Nuevos outputs ───────────────────────────────────────────────────
+
+output "alb_dns_name" {
+  description = "DNS name del ALB para acceder al frontend."
+  value       = aws_lb.main.dns_name
+}
+
+output "private_subnet_ids" {
+  description = "IDs de las subredes privadas."
+  value       = [aws_subnet.private.id, aws_subnet.private_2.id]
+}
+
+output "public_subnet_ids" {
+  description = "IDs de las subredes públicas."
+  value       = [aws_subnet.public.id, aws_subnet.public_2.id]
+}
+
+output "nat_gateway_ip" {
+  description = "IP pública del NAT Gateway."
+  value       = aws_eip.nat.public_ip
+}

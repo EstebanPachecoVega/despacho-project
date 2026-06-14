@@ -26,7 +26,7 @@ Monorepo que contiene el frontend, dos backends (despachos y ventas) y la infrae
 
 ## Descripción General
 
-Despacho Project es un sistema de gestión integral que combina un **frontend React** con dos **microservicios Spring Boot** independientes para gestionar operaciones de despachos y ventas. El sistema está completamente contenerizado y desplegado en **AWS Fargate** utilizando infraestructura como código con **Terraform** y un pipeline de CI/CD automatizado con **GitHub Actions**.
+Despacho Project es un sistema de gestión integral que combina un **frontend React** con dos **microservicios Spring Boot** independientes para gestionar operaciones de despachos y ventas. El sistema está completamente contenerizado y desplegado en **AWS (ECS Fargate + EKS)** utilizando infraestructura como código con **Terraform** y un pipeline de CI/CD automatizado con **GitHub Actions**.
 
 ### Problema que resuelve
 
@@ -37,45 +37,81 @@ Permite a las empresas gestionar de forma separada y escalable las operaciones d
 ## Arquitectura del Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         AWS Cloud                                │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    VPC (10.0.0.0/16)                      │   │
-│  │  ┌────────────────────────────────────────────────────┐  │   │
-│  │  │              Public Subnet (10.0.1.0/24)           │  │   │
-│  │  │  ┌──────────────────────────────────────────────┐  │  │   │
-│  │  │  │            ECS Fargate Cluster               │  │  │   │
-│  │  │  │  ┌────────────────────────────────────────┐  │  │  │   │
-│  │  │  │  │  Task: despacho-project-app            │  │  │  │   │
-│  │  │  │  │  ├── frontend (Nginx, puerto 80)       │  │  │  │   │
-│  │  │  │  │  ├── backend-despachos (puerto 8080)   │  │  │  │   │
-│  │  │  │  │  └── backend-ventas (puerto 8081)      │  │  │  │   │
-│  │  │  │  └────────────────────────────────────────┘  │  │  │   │
-│  │  │  └──────────────────────────────────────────────┘  │  │   │
-│  │  │                                                     │  │   │
-│  │  │  ┌──────────────────────────────────────────────┐  │  │   │
-│  │  │  │    EC2 Instance (MySQL 8.0)                  │  │  │   │
-│  │  │  │    - Docker container con MySQL              │  │  │   │
-│  │  │  │    - Puerto 3306 expuesto internamente       │  │  │   │
-│  │  │  └──────────────────────────────────────────────┘  │  │   │
-│  │  └────────────────────────────────────────────────────┘  │   │
-│  │                                                           │   │
-│  │  ┌────────────────────────────────────────────────────┐  │   │
-│  │  │              ECR Repositories                       │  │   │
-│  │  │  - despacho-project-backend-despachos               │  │   │
-│  │  │  - despacho-project-backend-ventas                  │  │   │
-│  │  │  - despacho-project-frontend                        │  │   │
-│  │  └────────────────────────────────────────────────────┘  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                            AWS Cloud                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │                       VPC (10.0.0.0/16)                             │  │
+│  │                                                                     │  │
+│  │  ┌───────────── Subredes Públicas (10.0.1.0/24, 10.0.2.0/24) ────┐  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │            Application Load Balancer                    │  │  │  │
+│  │  │  │            (puerto 80 -> target group)                  │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  │                                                               │  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │              Internet Gateway (IGW)                     │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  │                                                               │  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │              NAT Gateway (EIP)                          │  │  │  │
+│  │  │  │              (salida a internet desde privado)          │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  └───────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                     │  │
+│  │  ┌──────── Subredes Privadas (10.0.3.0/24, 10.0.4.0/24) ─────────┐  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │            ECS Fargate (app)                            │  │  │  │
+│  │  │  │  ┌──────────────────────────────────────────────────┐   │  │  │  │
+│  │  │  │  │  Task: frontend (80) ← ALB target group          │   │  │  │  │
+│  │  │  │  │  ├── backend-despachos (8080, via localhost)     │   │  │  │  │
+│  │  │  │  │  └── backend-ventas (8081, via localhost)        │   │  │  │  │
+│  │  │  │  └──────────────────────────────────────────────────┘   │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  │                                                               │  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │            EC2 MySQL (t3.micro)                         │  │  │  │
+│  │  │  │            - Docker MySQL 8.0                           │  │  │  │
+│  │  │  │            - Puerto 3306 (solo ECS + EKS)               │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  │                                                               │  │  │
+│  │  │  ┌─────────────────────────────────────────────────────────┐  │  │  │
+│  │  │  │            EKS Cluster                                  │  │  │  │
+│  │  │  │  - Node group (t3.medium, 1-3 nodos)                    │  │  │  │
+│  │  │  │  - frontend: LoadBalancer (port 80)                     │  │  │  │
+│  │  │  │  - back-despachos: ClusterIP (8080)                     │  │  │  │
+│  │  │  │  - back-ventas: ClusterIP (8081)                        │  │  │  │
+│  │  │  └─────────────────────────────────────────────────────────┘  │  │  │
+│  │  └───────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                     │  │
+│  │  ┌───────────────────────────────────────────────────────────────┐  │  │
+│  │  │              ECR Repositories                                 │  │  │
+│  │  │  - backend-despachos / backend-ventas / frontend              │  │  │
+│  │  └───────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                     │  │
+│  │  ┌───────────────────────────────────────────────────────────────┐  │  │
+│  │  │              CloudWatch                                       │  │  │
+│  │  │  - Logs: ECS (/ecs/...), EKS control plane (/aws/eks/...)     │  │  │
+│  │  │  - Alarmas: CPU, memoria, errores, status checks              │  │  │
+│  │  │  - Dashboard: métricas + logs de error                        │  │  │
+│  │  └───────────────────────────────────────────────────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Flujo de Comunicación
+### Flujo de Comunicación (ECS)
 
-1. **Usuario** → Frontend (React) alojado en Nginx
-2. **Frontend** → Backend APIs mediante HTTP (puertos 8080 y 8081)
-3. **Backends** → MySQL en EC2 (puerto 3306) para persistencia
-4. **Logs** → Envío a CloudWatch Logs para monitoreo centralizado
+1. **Usuario** → ALB (puerto 80) → ECS Task (frontend Nginx, puerto 80)
+2. **Frontend** → Backend APIs via `localhost` (misma tarea ECS, puertos 8080/8081)
+3. **Backends** → MySQL EC2 en subred privada (puerto 3306, IP privada)
+4. **Logs** → CloudWatch Logs grupo `/ecs/despacho-project`
+5. **Alarmas** → CloudWatch monitorea CPU, memoria, errores, status checks
+
+### Flujo de Comunicación (EKS)
+
+1. **Usuario** → K8s LoadBalancer → Pod frontend (puerto 80)
+2. **Frontend** → Backend APIs via ClusterIP (back-despachos:8080, back-ventas:8081)
+3. **Backends** → MySQL EC2 en subred privada (puerto 3306, IP privada)
+4. **Logs** → CloudWatch Logs grupo `/aws/eks/despacho-project-eks/cluster`
 
 ---
 
@@ -186,8 +222,10 @@ MySQL no disponible al inicio:
 ```
 
 ### Logging y monitoreo
-- **Logs centralizados:** AWS CloudWatch Logs (grupo `/ecs/despacho-project`)
-- **Streams individuales:** backend-despachos, backend-ventas, frontend
+- **Logs de ECS:** AWS CloudWatch Logs (grupo `/ecs/despacho-project`) — streams: backend-despachos, backend-ventas, frontend
+- **Logs de EKS:** AWS CloudWatch Logs (grupo `/aws/eks/despacho-project-eks/cluster`) — api, audit, authenticator, controllerManager, scheduler
+- **Alarmas:** CPU y memoria de ECS, errores en logs, CPU y status check de MySQL
+- **Dashboard:** `despacho-project-dashboard` en CloudWatch con métricas y logs en vivo
 - **Retención:** 7 días
 
 ---
@@ -199,19 +237,29 @@ MySQL no disponible al inicio:
 | Recurso | Nombre | Propósito |
 |---------|--------|-----------|
 | **VPC** | `despacho-project-vpc` | Red aislada (10.0.0.0/16) |
-| **Subred Pública** | `despacho-project-subnet` | 10.0.1.0/24, auto-asign IP pública |
-| **Internet Gateway** | `despacho-project-igw` | Salida a internet |
-| **Route Table** | `despacho-project-rt` | Enruta tráfico 0.0.0.0/0 al IGW |
-| **Security Group** | `despacho-project-sg` | Puertos 22, 80, 8080, 8081, 3306 abiertos |
-| **EC2 MySQL** | `despacho-project-mysql` | t3.micro, 30GB gp3, user_data con Docker |
+| **Subred Pública** | `despacho-project-subnet` (x2) | 10.0.1.0/24 y 10.0.2.0/24, auto-asign IP pública |
+| **Subred Privada** | `despacho-project-private` (x2) | 10.0.3.0/24 y 10.0.4.0/24, sin IP pública |
+| **Internet Gateway** | `despacho-project-igw` | Salida a internet desde subredes públicas |
+| **NAT Gateway** | `despacho-project-nat` | Salida a internet desde subredes privadas |
+| **Elastic IP** | `despacho-project-eip` | IP fija para el NAT Gateway |
+| **Route Tables** | pública + privada | Enrutan tráfico al IGW y NAT respectivamente |
+| **ALB** | `despacho-project-alb` | Application Load Balancer público (puerto 80) |
+| **Target Group** | `despacho-project-frontend-tg` | Target group para frontend ECS (tipo IP) |
+| **Security Groups** | `alb-sg`, `ecs-tasks-sg`, `db-sg` | 3 SGs separados: ALB público, ECS privado, DB privado |
+| **EC2 MySQL** | `despacho-project-mysql` | t3.micro, 30GB gp3, en subred privada |
 | **ECR Repositories** | 3 repos (backend, ventas, frontend) | Almacén de imágenes Docker |
 | **ECS Cluster** | `despacho-project-cluster` | Fargate, modo awsvpc |
-| **ECS Task Definition** | `despacho-project-app` | CPU 1024, RAM 2048, 3 contenedores |
-| **ECS Service** | `app` | Desired count 1, auto-reemplazo |
-| **CloudWatch Log Group** | `/ecs/despacho-project` | Retención 7 días |
+| **ECS Task Definition** | `despacho-project-app` | CPU 1024, RAM 4096, 3 contenedores |
+| **ECS Service** | `app` | Desired count 1, con ALB |
+| **EKS Cluster** | `despacho-project-eks` | Kubernetes 1.30, nodos en subredes privadas |
+| **EKS Node Group** | `despacho-project-node-group` | t3.medium, 1-3 nodos |
+| **CloudWatch Log Group** | `/ecs/despacho-project` | Logs de ECS, retención 7 días |
+| **CloudWatch Log Group** | `/aws/eks/despacho-project-eks/cluster` | Logs de control plane de EKS |
+| **CloudWatch Alarmas** | 5 alarmas | CPU/memoria ECS, CPU/status EC2, errores en logs |
+| **CloudWatch Dashboard** | `despacho-project-dashboard` | Métricas y logs recientes |
 
 ### Rol IAM
-- **LabRole** (proporcionado por AWS Academy) con permisos para ECS, ECR, CloudWatch
+- **LabRole** (proporcionado por AWS Academy) con permisos para ECS, ECR, EKS, CloudWatch, EC2
 
 ---
 
@@ -252,12 +300,26 @@ despacho-project/
 │   │   ├── pages/
 │   │   └── ...
 │   └── ...
-└── infrastructure/
-    ├── main.tf                       # Recursos AWS completos
-    ├── variables.tf
-    ├── terraform.tfvars.example      # Plantilla de variables
-    ├── terraform.tfvars              # NO SUBIR (valores reales)
-    └── outputs.tf                    # (opcional)
+├── infrastructure/
+│   ├── terraform/
+│   │   ├── provider.tf               # Provider AWS
+│   │   ├── variables.tf              # Variables de entrada
+│   │   ├── vpc.tf                    # VPC, subredes, NAT, tablas de ruta
+│   │   ├── security.tf               # Security groups (alb, ecs-tasks, db)
+│   │   ├── database.tf               # EC2 MySQL en subred privada
+│   │   ├── ecr.tf                    # Repositorios ECR
+│   │   ├── ecs.tf                    # ECS + ALB + CloudWatch logs
+│   │   ├── eks.tf                    # EKS cluster + node group
+│   │   ├── cloudwatch.tf             # Alarmas, dashboard, metric filters
+│   │   ├── outputs.tf                # Outputs del stack
+│   │   └── terraform.tfvars          # NO SUBIR (valores reales)
+│   └── k8s/
+│       ├── kustomization.yaml
+│       ├── namespace.yaml
+│       ├── app-configmap.yaml
+│       ├── backend-despachos.yaml
+│       ├── backend-ventas.yaml
+│       └── frontend.yaml
 ```
 
 ---
@@ -268,10 +330,10 @@ despacho-project/
 
 | Variable | Propósito | Ejemplo |
 |----------|-----------|---------|
-| `SPRING_DATASOURCE_URL` | Conexión JDBC | `jdbc:mysql://10.0.1.xxx:3306/despachodb?...` |
-| `SPRING_DATASOURCE_USERNAME` | Usuario MySQL | `root` |
+| `SPRING_DATASOURCE_URL` | Conexión JDBC | `jdbc:mysql://10.0.3.xxx:3306/despachodb?...` |
+| `SPRING_DATASOURCE_USERNAME` | Usuario MySQL | (Secreto) |
 | `SPRING_DATASOURCE_PASSWORD` | Contraseña | (secreto) |
-| `DB_HOST` | IP privada de EC2 MySQL | `10.0.1.xxx` |
+| `DB_HOST` | IP privada de EC2 MySQL | `10.0.3.xxx` |
 
 ### Archivo `terraform.tfvars` (requerido localmente)
 
@@ -297,11 +359,31 @@ GitHub Actions espera estos Secrets:
 
 ## Despliegue en AWS con Kubernetes
 
-El directorio `k8s/` contiene los manifiestos para desplegar:
+El directorio `k8s/` contiene los manifiestos para desplegar en EKS:
 
-- `back-despachos`
-- `back-ventas`
-- `frontend`
+| Manifiesto | Tipo | Puerto |
+|------------|------|--------|
+| `namespace.yaml` | Namespace | `despacho-project` |
+| `app-configmap.yaml` | ConfigMap | Configuración de base de datos |
+| `backend-despachos.yaml` | Deployment + ClusterIP Service | 8080 |
+| `backend-ventas.yaml` | Deployment + ClusterIP Service | 8081 |
+| `frontend.yaml` | Deployment + LoadBalancer Service | 80 |
+
+Los nodos EKS están en **subredes privadas** con salida a internet vía NAT Gateway.
+El Service `frontend` de tipo `LoadBalancer` crea automáticamente un Classic Load Balancer en las subredes públicas.
+
+### Requisitos para EKS
+
+- Las subredes públicas tienen el tag `kubernetes.io/role/elb: 1`
+- Las subredes privadas tienen el tag `kubernetes.io/role/internal-elb: 1`
+- Ambas tienen el tag `kubernetes.io/cluster/<cluster-name>: shared`
+
+### Despliegue manual
+
+```bash
+kubectl apply -k infrastructure/k8s/
+kubectl -n despacho-project rollout status deployment/frontend --timeout=180s
+```
 
 ---
 
@@ -322,7 +404,7 @@ docker build -t despacho-backend-test ./backend/despacho-service
 # Ejecutar (requiere MySQL local o variable DB_HOST)
 docker run -p 8080:8080 \
   -e SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/testdb \
-  -e SPRING_DATASOURCE_USERNAME=root \
+  -e SPRING_DATASOURCE_USERNAME=username \
   -e SPRING_DATASOURCE_PASSWORD=password \
   despacho-backend-test
 ```
@@ -352,39 +434,60 @@ docker run -p 8080:80 despacho-frontend-test
 **Trigger:** Push a rama `main`
 
 **Jobs:**
-1. **Checkout** del código
-2. **Configurar credenciales AWS** (usando secrets)
-3. **Login en ECR** (autenticación Docker)
-4. **Build y push** de 3 imágenes (backend-despachos, backend-ventas, frontend)
-5. **Forzar nuevo despliegue** en ECS (`update-service --force-new-deployment`)
+1. **Terraform Apply** — Crea/actualiza toda la infraestructura (VPC, subredes, ALB, ECS, EKS, etc.)
+2. **Build y push** de 3 imágenes Docker a ECR (backend-despachos, backend-ventas, frontend)
+3. **kubectl apply** — Renderiza y aplica los manifiestos de Kubernetes en EKS
+4. **Rollout status** — Verifica que los deployments de K8s estén saludables
 
-**Duración típica:** 3-5 minutos
+**Duración típica:** 5-8 minutos
 
 ### Observabilidad con CloudWatch
 
-| Recurso | Cómo acceder |
-|---------|---------------|
-| **Logs de contenedores** | CloudWatch → Log groups → `/ecs/despacho-project` |
-| **Métricas de ECS** | CloudWatch → Metrics → ECS |
-| **Health checks** | ECS → Tasks → Ver "Health status" |
-| **Estado de servicios** | ECS → Clusters → Servicio app |
+#### Logs
 
-### Comandos útiles (AWS CLI)
+| Grupo de logs | Origen | Acceso |
+|---------------|--------|--------|
+| `/ecs/despacho-project` | Contenedores ECS (frontend, back-despachos, back-ventas) | CloudWatch → Log groups |
+| `/aws/eks/despacho-project-eks/cluster` | Plano de control de EKS (api, audit, authenticator, controllerManager, scheduler) | CloudWatch → Log groups |
+
+#### Alarmas configuradas
+
+| Alarma | Métrica | Umbral | Periodo |
+|--------|---------|--------|---------|
+| `ecs-cpu-high` | CPU de ECS | > 80% | 10 min |
+| `ecs-memory-high` | Memoria de ECS | > 80% | 10 min |
+| `ecs-errors-high` | Errores en logs (`ERROR`, `Exception`) | > 10 | 5 min |
+| `ec2-cpu-high` | CPU de MySQL EC2 | > 80% | 10 min |
+| `ec2-status-failed` | Status check de EC2 | ≥ 1 | 10 min |
+
+#### Dashboard
+
+Disponible en CloudWatch → Dashboards → `despacho-project-dashboard`
+Incluye: métricas de CPU/memoria de ECS, CPU/status de EC2 MySQL, conteo de errores en logs, y tabla con los últimos errores.
+
+#### Comandos útiles (AWS CLI)
 
 ```bash
 # Ver logs de backend-despachos
 aws logs get-log-events --log-group-name /ecs/despacho-project \
   --log-stream-name backend-despachos/xxxx
 
-# Forzar despliegue manual
+# Obtener DNS del ALB
+aws elbv2 describe-load-balancers --names "despacho-project-alb" \
+  --query "LoadBalancers[0].DNSName" --output text
+
+# Forzar despliegue manual ECS
 aws ecs update-service --cluster despacho-project-cluster \
   --service app --force-new-deployment
 
-# Obtener IP pública de la tarea
-TASK_ARN=$(aws ecs list-tasks --cluster despacho-project-cluster \
-  --query "taskArns[0]" --output text)
-aws ecs describe-tasks --cluster despacho-project-cluster \
-  --tasks $TASK_ARN --query "tasks[0].attachments[0].details[?name=='publicIPv4'].value"
+# Obtener estado del cluster EKS
+aws eks describe-cluster --name despacho-project-eks
+
+# Ver alarmas activas
+aws cloudwatch describe-alarms --state-value ALARM
+
+# Ver dashboard
+aws cloudwatch get-dashboard --dashboard-name despacho-project-dashboard
 ```
 
 ---
@@ -407,13 +510,21 @@ pnpm build     # Verifica que build funciona
 ### Pruebas de integración (post-despliegue)
 
 ```bash
-# Probar health checks
-curl http://<IP_PUBLICA>:8080/swagger-ui.html
-curl http://<IP_PUBLICA>:8081/swagger-ui.html
-curl http://<IP_PUBLICA>
+# Obtener el DNS del ALB
+ALB_DNS=$(aws elbv2 describe-load-balancers --names "despacho-project-alb" \
+  --query "LoadBalancers[0].DNSName" --output text)
 
-# Probar endpoints concretos (ejemplo)
-curl http://<IP_PUBLICA>:8080/api/despachos
+# Probar health checks via ALB
+curl http://$ALB_DNS
+
+# Obtener URL del K8s LoadBalancer
+LB_HOST=$(kubectl get svc -n despacho-project frontend \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+curl http://$LB_HOST
+
+# Probar endpoints via ECS (necesita acceso a subred privada o usar AWS Systems Manager)
+# curl http://<IP_PRIVADA_ECS>:8080/api/despachos
+# curl http://<IP_PRIVADA_ECS>:8081/api/ventas
 ```
 
 ---
@@ -452,8 +563,8 @@ server {
 ### Variables de entorno (Vite)
 Crear `.env.production`:
 ```env
-VITE_API_DESPACHOS_URL=http://<IP_PUBLICA>:8080
-VITE_API_VENTAS_URL=http://<IP_PUBLICA>:8081
+VITE_API_DESPACHOS_URL=http://<ALB_DNS>:8080
+VITE_API_VENTAS_URL=http://<ALB_DNS>:8081
 ```
 
 ---
@@ -464,14 +575,20 @@ VITE_API_VENTAS_URL=http://<IP_PUBLICA>:8081
 - [x] Microservicios Spring Boot con JPA
 - [x] Frontend React con Vite y Tailwind
 - [x] Contenerización completa (Docker multi-stage)
-- [x] Infraestructura AWS con Terraform (VPC, ECS Fargate, ECR, EC2 MySQL)
+- [x] Infraestructura AWS con Terraform (VPC, ECS Fargate, ECR, EC2 MySQL, EKS)
 - [x] CI/CD con GitHub Actions (build + push + deploy)
 - [x] Health checks y logs centralizados (CloudWatch)
 - [x] Espera activa a MySQL en entrypoint
 - [x] Configuración externalizada (variables de entorno)
+- [x] Subredes privadas con NAT Gateway para mayor seguridad
+- [x] Application Load Balancer (ALB) como endpoint fijo para ECS
+- [x] Security groups segregados por capa (ALB, ECS, DB)
+- [x] EKS con nodos en subredes privadas
+- [x] Logs del plano de control de EKS en CloudWatch
+- [x] Alarmas de CloudWatch (CPU, memoria, errores, status checks)
+- [x] Dashboard de CloudWatch con métricas y logs
 
 ### En progreso / Planificado
-- [ ] Application Load Balancer (ALB) para endpoint fijo
 - [ ] Dominio personalizado + SSL/TLS (AWS Certificate Manager)
 - [ ] Migración a AWS RDS (MySQL gestionado)
 - [ ] Integración con RabbitMQ para eventos asíncronos
