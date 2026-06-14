@@ -102,7 +102,48 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
+# Application Load Balancer
+
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public.id, aws_subnet.public_2.id]
+}
+
+resource "aws_lb_target_group" "frontend" {
+  name        = "${var.project_name}-frontend-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+    timeout             = 5
+  }
+}
+
+resource "aws_lb_listener" "frontend" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+}
+
 # ECS Service
+
 resource "aws_ecs_service" "app" {
   name            = "app"
   cluster         = aws_ecs_cluster.main.id
@@ -115,8 +156,14 @@ resource "aws_ecs_service" "app" {
   deployment_maximum_percent         = 100
 
   network_configuration {
-    subnets          = [aws_subnet.public.id]
-    security_groups  = [aws_security_group.main.id]
-    assign_public_ip = true
+    subnets          = [aws_subnet.private.id]
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend.arn
+    container_name   = "frontend"
+    container_port   = 80
   }
 }
