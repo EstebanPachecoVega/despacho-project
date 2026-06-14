@@ -22,10 +22,27 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
+      - name: Obtener AWS Account ID
+        run: |
+          echo "AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_ENV"
+
+      - name: Restaurar cache de Terraform state
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/terraform/terraform.tfstate
+          key: ${{ runner.os }}-terraform-state-${{ env.AWS_ACCOUNT_ID }}
+
+
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
+
+      - name: Limpiar recursos de Kubernetes
+        run: |
+          aws eks update-kubeconfig --name despacho-project-eks --region us-east-1 || true
+          kubectl delete namespace despacho-project --timeout=120s || true
 
       - name: Terraform Destroy
         working-directory: infrastructure/terraform
