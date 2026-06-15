@@ -102,3 +102,51 @@ resource "aws_route_table_association" "private_2" {
   subnet_id      = aws_subnet.private_2.id
   route_table_id = aws_route_table.private.id
 }
+
+# ─── VPC Flow Logs ────────────────────────────────────────────────────
+
+resource "aws_cloudwatch_log_group" "vpc_flow" {
+  name              = "/vpc/flow-logs/${var.project_name}"
+  retention_in_days = 7
+}
+
+data "aws_iam_policy_document" "vpc_flow_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "vpc_flow_logs" {
+  name               = "${var.project_name}-vpc-flow-logs-role"
+  assume_role_policy = data.aws_iam_policy_document.vpc_flow_assume.json
+}
+
+data "aws_iam_policy_document" "vpc_flow_logs" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:PutLogEvents",
+      "logs:CreateLogGroup",
+      "logs:DescribeLogGroups"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  name   = "${var.project_name}-vpc-flow-logs-policy"
+  role   = aws_iam_role.vpc_flow_logs.id
+  policy = data.aws_iam_policy_document.vpc_flow_logs.json
+}
+
+resource "aws_flow_log" "main" {
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.vpc_flow.arn
+  traffic_type         = "ALL"
+  vpc_id               = aws_vpc.main.id
+  iam_role_arn         = aws_iam_role.vpc_flow_logs.arn
+}

@@ -119,6 +119,8 @@ resource "aws_lb_target_group" "frontend" {
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
+  deregistration_delay = 30
+
   health_check {
     enabled             = true
     path                = "/"
@@ -152,8 +154,8 @@ resource "aws_ecs_service" "app" {
   desired_count   = 1
 
   force_new_deployment               = true
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   network_configuration {
     subnets          = [aws_subnet.private.id]

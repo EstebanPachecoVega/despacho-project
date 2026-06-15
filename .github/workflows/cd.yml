@@ -117,15 +117,6 @@ jobs:
             --dry-run=client \
             -o yaml | kubectl apply -f -
 
-      - name: Esperar a que MySQL esté listo
-        run: |
-          echo "Esperando conexión a MySQL en $DB_HOST:3306..."
-          for i in $(seq 1 30); do
-            nc -zv "$DB_HOST" 3306 2>/dev/null && echo "MySQL listo" && break
-            echo "  intento $i/30 - esperando 10s..."
-            sleep 10
-          done
-
       - name: Renderizar y aplicar manifiestos Kubernetes
         run: |
           mkdir -p .k8s-rendered
