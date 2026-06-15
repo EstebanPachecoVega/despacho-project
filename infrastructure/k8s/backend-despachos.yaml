@@ -15,6 +15,22 @@ spec:
       labels:
         app: back-despachos
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Esperando a MySQL en $DB_HOST:3306..."
+              until nc -z "$DB_HOST" 3306; do
+                echo "MySQL no disponible, esperando 5s..."
+                sleep 5
+              done
+              echo "MySQL listo!"
+          envFrom:
+            - configMapRef:
+                name: app-config
       containers:
         - name: back-despachos
           image: __ECR_REGISTRY__/__PROJECT_NAME__-backend-despachos:__IMAGE_TAG__
