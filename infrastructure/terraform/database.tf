@@ -24,7 +24,7 @@ resource "aws_instance" "db" {
     device_name           = "/dev/sdf"
     volume_size           = var.db_volume_size
     volume_type           = "gp3"
-    delete_on_termination = false
+    delete_on_termination = true
     tags = {
       Name = "${var.project_name}-mysql-data"
     }
