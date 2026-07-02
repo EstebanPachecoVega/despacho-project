@@ -26,17 +26,27 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
         }
       );
       Swal.fire({
-        title: "Despacho modificado 🛻!",
-        text: "El despacho ha sido modificado exitosamente",
+        title: "¡Despacho actualizado!",
+        text: `El despacho #${despacho.idDespacho} ha sido modificado exitosamente.`,
         icon: "success",
         confirmButtonText: "Aceptar",
       });
       onClose();
     } catch (error) {
       console.error("Error en la solicitud:", error);
+      const serverMsg = error.response?.data?.message;
+      const fieldErrors = error.response?.data?.errors;
+      let errorText = serverMsg || "Ocurrió un error al modificar el despacho.";
+
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        errorText += "\n\n" + Object.entries(fieldErrors)
+          .map(([campo, mensaje]) => `• ${campo}: ${mensaje}`)
+          .join("\n");
+      }
+
       Swal.fire({
-        title: "Error",
-        text: error.response?.data?.message || "Ocurrió un error al modificar el despacho",
+        title: "Error al modificar despacho",
+        text: errorText,
         icon: "error",
         confirmButtonText: "Aceptar",
       });
