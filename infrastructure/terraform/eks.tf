@@ -1,3 +1,7 @@
+data "aws_iam_role" "lab" {
+  name = "LabRole"
+}
+
 # CloudWatch Log Group para EKS
 
 resource "aws_cloudwatch_log_group" "eks" {

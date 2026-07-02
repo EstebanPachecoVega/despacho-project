@@ -31,6 +31,20 @@ spec:
           envFrom:
             - configMapRef:
                 name: app-config
+        - name: create-schemas
+          image: mysql:8-oracle
+          command:
+            - sh
+            - -c
+            - |
+              echo "Creando esquemas en MySQL..."
+              mysql -h "$DB_HOST" -u "$SPRING_DATASOURCE_USERNAME" -p"$SPRING_DATASOURCE_PASSWORD" -e "CREATE SCHEMA IF NOT EXISTS despachos; CREATE SCHEMA IF NOT EXISTS ventas;"
+              echo "Esquemas creados correctamente!"
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: mysql-credentials
       containers:
         - name: back-despachos
           image: __ECR_REGISTRY__/__PROJECT_NAME__-backend-despachos:__IMAGE_TAG__

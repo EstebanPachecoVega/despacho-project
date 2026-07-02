@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import { Modal } from "./Modal";
 import { FormDespacho } from "./FormDespacho";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 export const TableCompras = ({ searchTerm = "" }) => {
   const [ventas, setVentas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const compras = async () => {
+    setLoading(true);
     await axios.get("/api/v1/ventas", {
       headers:{
         'Content-Type': 'application/json',
@@ -15,6 +19,18 @@ export const TableCompras = ({ searchTerm = "" }) => {
     }).then((response) => {
       console.log(response.data);
       setVentas(response.data);
+      setError(null);
+    }).catch((error) => {
+      console.error("Error al cargar ventas:", error);
+      setError("No se pudieron cargar las ordenes de compra. Verifica que los servicios backend esten funcionando.");
+      Swal.fire({
+        title: "Error de conexion",
+        text: error.response?.data?.message || "No se pudo conectar con el servicio de ventas. Asegurate de que el backend este corriendo.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }).finally(() => {
+      setLoading(false);
     });
   };
   // Llamada a la función para obtener los datos cuando el componente se monta
@@ -48,7 +64,28 @@ export const TableCompras = ({ searchTerm = "" }) => {
                 </tr>
               </thead>
               <tbody>
-                {ventas
+                {loading && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-gray-500">
+                      Cargando ordenes de compra...
+                    </td>
+                  </tr>
+                )}
+                {error && !loading && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                )}
+                {!loading && !error && ventas.filter((venta) => !venta.despachoGenerado).length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-gray-500">
+                      No hay ordenes de compra pendientes.
+                    </td>
+                  </tr>
+                )}
+                {!loading && !error && ventas
                   .filter((venta) => !venta.despachoGenerado)
                   .filter((venta) =>
                     !searchTerm ||

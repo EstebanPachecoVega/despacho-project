@@ -41,13 +41,6 @@ output "eks_cluster_ca_cert" {
   sensitive   = true
 }
 
-# ─── Nuevos outputs ───────────────────────────────────────────────────
-
-output "alb_dns_name" {
-  description = "DNS name del ALB para acceder al frontend."
-  value       = aws_lb.main.dns_name
-}
-
 output "private_subnet_ids" {
   description = "IDs de las subredes privadas."
   value       = [aws_subnet.private.id, aws_subnet.private_2.id]
