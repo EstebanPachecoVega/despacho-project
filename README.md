@@ -157,7 +157,7 @@ Permite a las empresas gestionar de forma separada y escalable las operaciones d
 
 ### Patrones de Diseño
 - **API Gateway implícito:** El frontend consume directamente los dos microservicios
-- **Database per Service:** Cada microservicio tiene su propia base de datos (actualmente comparten MySQL pero aislado por esquema)
+- **Database per Service:** Cada microservicio gestiona sus propias tablas dentro de la base de datos `despachodb` (tablas `despacho` y `venta`)
 - **Service Discovery:** No implementado (comunicación directa por IP)
 - **Configuración externalizada:** Variables de entorno para credenciales y conexiones
 
@@ -203,6 +203,11 @@ MySQL no disponible al inicio:
   → Los health checks fallarán
   → K8s reiniciará el contenedor (restartPolicy: Always)
   → MySQL eventualmente arranca (EC2 tarda ~2 minutos)
+
+Orden de arranque en K8s:
+  → init container wait-for-mysql (busybox): espera puerto 3306
+  → init container create-schemas (mysql:8-oracle): CREATE SCHEMA IF NOT EXISTS
+  → Contenedor principal: Hibernate crea tablas → data.sql inserta seed data
 ```
 
 ### Logging y monitoreo
@@ -246,40 +251,72 @@ MySQL no disponible al inicio:
 
 ```
 despacho-project/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                    # Integración continua (tests, lint, terraform validate)
-│       ├── cd.yml                    # Despliegue continuo (push a main)
-│       └── destroy.yml              # Destrucción manual de toda la infraestructura
+├── .env.example                         # Variables de entorno para docker-compose
+├── .env                                 # Credenciales MySQL (no se sube al repo)
+├── docker-compose.yml                   # Orquestación local
 ├── backend/
+│   ├── init.sql                         # Creación de schemas MySQL (docker-compose)
 │   ├── despacho-service/
-│   │   ├── Dockerfile                # Multi-stage, netcat health check
-│   │   ├── pom.xml                   # Dependencias Spring Boot
+│   │   ├── .env.example                 # Variables de entorno del servicio
+│   │   ├── .env                         # Credenciales (no se sube al repo)
+│   │   ├── dockerfile                   # Multi-stage, netcat health check
+│   │   ├── pom.xml                      # Dependencias Spring Boot
+│   │   ├── mvnw / mvnw.cmd              # Maven wrapper
 │   │   ├── src/
 │   │   │   └── main/
+│   │   │       ├── java/com/citt/
+│   │   │       │   ├── controller/      # REST endpoints
+│   │   │       │   ├── persistence/
+│   │   │       │   │   ├── entity/      # JPA entities
+│   │   │       │   │   ├── repository/  # Spring Data repos
+│   │   │       │   │   └── services/    # Lógica de negocio
+│   │   │       │   └── exceptions/      # Manejador global de errores
 │   │   │       └── resources/
 │   │   │           └── application.properties
 │   │   └── ...
 │   └── venta-service/
-│       ├── Dockerfile                # Multi-stage, netcat health check
+│       ├── .env.example
+│       ├── .env
+│       ├── dockerfile                   # Multi-stage, netcat health check
 │       ├── pom.xml
 │       ├── src/
+│       │   └── main/
+│       │       └── resources/
+│       │           ├── application.properties
+│       │           └── data.sql         # Seed data con 4 órdenes de compra
 │       └── ...
 ├── frontend/
-│   ├── Dockerfile                    # Node 22 + pnpm + Nginx
-│   ├── nginx.conf                    # Configuración SPA + caching
+│   ├── Dockerfile                       # Node 22 + pnpm + Nginx
+│   ├── default.conf.template            # Configuración Nginx con variables de entorno
 │   ├── package.json
 │   ├── pnpm-lock.yaml
 │   ├── .dockerignore
 │   ├── index.html
-│   ├── vite.config.js
+│   ├── vite.config.js                   # Proxy a backends en desarrollo
 │   ├── tailwind.config.js
 │   ├── src/
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── ...
+│   │   ├── main.jsx                     # Entry point
+│   │   ├── index.css                    # TailwindCSS
+│   │   ├── Routes/
+│   │   │   └── AppRoutes.jsx            # React Router
+│   │   ├── componentes/
+│   │   │   ├── CrudAdmin.jsx            # Dashboard principal
+│   │   │   ├── Layouts/
+│   │   │   │   ├── Navbar.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── Carrusel.jsx
+│   │   │   └── CrudAdmin/
+│   │   │       ├── TableCompras.jsx      # Tabla de órdenes de compra
+│   │   │       ├── TableDespachos.jsx    # Tabla de órdenes de despacho
+│   │   │       ├── FormDespacho.jsx      # Crear despacho
+│   │   │       ├── FormCierreDespacho.jsx # Cerrar/modificar despacho
+│   │   │       ├── CardComponent.jsx     # Cards del dashboard
+│   │   │       ├── SearchBar.jsx         # Búsqueda en tiempo real
+│   │   │       └── Modal.jsx             # Modal genérico
+│   │   └── pages/
+│   │       ├── Usuarios.jsx
+│   │       ├── Productos.jsx
+│   │       └── Configuracion.jsx
 │   └── ...
 ├── infrastructure/
 │   ├── terraform/
@@ -297,14 +334,28 @@ despacho-project/
 │       ├── kustomization.yaml
 │       ├── namespace.yaml
 │       ├── app-configmap.yaml
-│       ├── backend-despachos.yaml
-│       ├── backend-ventas.yaml
-│       └── frontend.yaml
+│       ├── backend-despachos.yaml     # Deployment + Service + init containers
+│       ├── backend-ventas.yaml        # Deployment + Service + init containers
+│       └── frontend.yaml              # Deployment + LoadBalancer Service
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                    # Integración continua (tests, lint, terraform validate)
+│       ├── cd.yml                    # Despliegue continuo (push a main)
+│       └── destroy.yml               # Destrucción manual de toda la infraestructura
 ```
 
 ---
 
 ## Configuración del Entorno
+
+### Variables de entorno para Docker Compose (archivo `.env` raíz)
+
+| Variable | Propósito | Ejemplo |
+|----------|-----------|---------|
+| `MYSQL_ROOT_PASSWORD` | Contraseña root de MySQL | `despacho_root_2026` |
+| `MYSQL_DATABASE` | Nombre de la base de datos | `despachodb` |
+| `MYSQL_USER` | Usuario de la aplicación | `despacho_app` |
+| `MYSQL_PASSWORD` | Contraseña del usuario | `despacho_app_2026` |
 
 ### Variables de entorno para los backends (inyectadas via K8s ConfigMap/Secrets)
 
@@ -345,8 +396,8 @@ El directorio `k8s/` contiene los manifiestos para desplegar en EKS:
 |------------|------|--------|
 | `namespace.yaml` | Namespace | `despacho-project` |
 | `app-configmap.yaml` | ConfigMap | Configuración de base de datos |
-| `backend-despachos.yaml` | Deployment + ClusterIP Service | 8080 |
-| `backend-ventas.yaml` | Deployment + ClusterIP Service | 8081 |
+| `backend-despachos.yaml` | Deployment + ClusterIP Service | 8080 | `wait-for-mysql` (busybox) + `create-schemas` (mysql:8-oracle) |
+| `backend-ventas.yaml` | Deployment + ClusterIP Service | 8081 | `wait-for-mysql` (busybox) + `create-schemas` (mysql:8-oracle) |
 | `frontend.yaml` | Deployment + LoadBalancer Service | 80 |
 
 Los nodos EKS están en **subredes privadas** con salida a internet vía NAT Gateway.
@@ -361,7 +412,20 @@ El Service `frontend` de tipo `LoadBalancer` crea automáticamente un Classic Lo
 ### Despliegue manual
 
 ```bash
-kubectl apply -k infrastructure/k8s/
+# Renderizar manifiestos reemplazando placeholders
+mkdir -p .k8s-rendered
+cp infrastructure/k8s/*.yaml .k8s-rendered/
+for f in .k8s-rendered/*.yaml; do
+  sed -i \
+    -e "s|__ECR_REGISTRY__|${ECR_REGISTRY}|g" \
+    -e "s|__PROJECT_NAME__|${PROJECT_NAME}|g" \
+    -e "s|__IMAGE_TAG__|${IMAGE_TAG}|g" \
+    -e "s|__DB_HOST__|${DB_HOST}|g" \
+    -e "s|__DB_NAME__|${DB_NAME}|g" \
+    "$f"
+done
+
+kubectl apply -k .k8s-rendered/
 kubectl -n despacho-project rollout status deployment/frontend --timeout=180s
 ```
 
@@ -371,9 +435,24 @@ kubectl -n despacho-project rollout status deployment/frontend --timeout=180s
 
 ### Requisitos previos
 - Docker Desktop
-- Node.js 22 + pnpm (para frontend)
-- Java 17 + Maven (para backends)
-- MySQL 8.0 local (opcional)
+- Node.js 22 + pnpm (para frontend standalone)
+- Java 21 + Maven (para backends standalone, opcional)
+
+### Con Docker Compose (recomendado)
+
+```bash
+# 1. Clonar y configurar variables de entorno
+cp .env.example .env
+cp backend/despacho-service/.env.example backend/despacho-service/.env
+cp backend/venta-service/.env.example backend/venta-service/.env
+
+# 2. Primer arranque (limpia volumen MySQL para cargar schemas y seed data)
+docker compose down -v
+docker compose up -d --build
+
+# 3. Abrir frontend
+# http://localhost:3000
+```
 
 ### Backends (locales con Docker)
 
@@ -402,7 +481,7 @@ pnpm build # Genera carpeta dist/
 
 ```bash
 docker build -t despacho-frontend-test ./frontend
-docker run -p 8080:80 despacho-frontend-test
+docker run -p 3000:80 despacho-frontend-test
 ```
 
 ---
@@ -478,7 +557,7 @@ aws cloudwatch get-dashboard --dashboard-name despacho-project-dashboard
 ### Backend (Spring Boot)
 ```bash
 cd backend/despacho-service
-mvn test
+./mvnw test
 ```
 
 ### Frontend (React - pruebas básicas)
@@ -560,6 +639,13 @@ VITE_API_VENTAS_URL=http://<LB_DNS>:8081
 - [x] Logs del plano de control de EKS en CloudWatch
 - [x] Alarmas de CloudWatch (errores EKS, CPU/status EC2)
 - [x] Dashboard de CloudWatch con métricas EKS, EC2 MySQL y logs
+- [x] Seed data automático con `data.sql` (INSERT IGNORE en cada arranque)
+- [x] Validación de fecha de despacho (sin fecha, sin fechas pasadas)
+- [x] IDs secuenciales con `GenerationType.IDENTITY` (sin saltos)
+- [x] Init containers en K8s (`wait-for-mysql` + `create-schemas`)
+- [x] Manejo de errores en frontend con SweetAlert2 (loading, error, empty)
+- [x] Mensajes de error intuitivos en backend (español)
+- [x] Orquestación local con Docker Compose (MySQL + 2 backends + frontend)
 
 ### En progreso / Planificado
 - [ ] Dominio personalizado + SSL/TLS (AWS Certificate Manager)
