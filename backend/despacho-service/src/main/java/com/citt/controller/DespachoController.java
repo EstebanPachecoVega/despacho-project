@@ -4,7 +4,6 @@ import com.citt.persistence.entity.Despacho;
 import com.citt.persistence.services.DespachoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +37,7 @@ public class DespachoController {
     @PutMapping("/{idDespacho}")
     public ResponseEntity<Despacho> actualizarDespacho(
             @PathVariable Long idDespacho,
-            @Valid @RequestBody Despacho despacho) {
+            @RequestBody Despacho despacho) {
         Despacho despachoActualizado = despachoService.updateDespacho(idDespacho, despacho);
         return ResponseEntity.ok(despachoActualizado);
     }

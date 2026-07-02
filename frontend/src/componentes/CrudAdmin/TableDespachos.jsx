@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Modal } from "./Modal";
 import { FormCierreDespacho } from "./FormCierreDespacho";
+import Swal from "sweetalert2";
 
 export const TableDespachos = ({ searchTerm = "" }) => {
   const [despachos, setDespachos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const despacho = async () => {
+    setLoading(true);
     await axios
       .get("/api/v1/despachos", {
         headers:{
@@ -17,6 +21,20 @@ export const TableDespachos = ({ searchTerm = "" }) => {
       .then((response) => {
         console.log(response.data);
         setDespachos(response.data);
+        setError(null);
+      })
+      .catch((error) => {
+        console.error("Error al cargar despachos:", error);
+        setError("No se pudieron cargar las ordenes de despacho. Verifica que los servicios backend esten funcionando.");
+        Swal.fire({
+          title: "Error de conexion",
+          text: error.response?.data?.message || "No se pudo conectar con el servicio de despachos. Asegurate de que el backend este corriendo.",
+          icon: "error",
+          confirmButtonText: "Aceptar",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
   // Llamada a la función para obtener los datos cuando el componente se monta
@@ -50,7 +68,28 @@ export const TableDespachos = ({ searchTerm = "" }) => {
                 </tr>
               </thead>
               <tbody>
-                {despachos
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-gray-500">
+                      Cargando ordenes de despacho...
+                    </td>
+                  </tr>
+                )}
+                {error && !loading && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                )}
+                {!loading && !error && despachos.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-gray-500">
+                      No hay ordenes de despacho registradas.
+                    </td>
+                  </tr>
+                )}
+                {!loading && !error && despachos
                 .filter((despacho) =>
                   !searchTerm ||
                   String(despacho.idDespacho).includes(searchTerm) ||

@@ -47,14 +47,14 @@ public class DespachoServiceImpl implements DespachoService{
             }
             existingDespacho.setDespachado(despacho.isDespachado());
             return despachoRepository.save(existingDespacho);
-        }).orElseThrow(() -> new DespachoNotFoundException("Despacho no encontrado con ID: " + idDespacho));
+        }).orElseThrow(() -> new DespachoNotFoundException("No se encontró el despacho #" + idDespacho + ". Verifica que exista en el sistema."));
     }
 
     @Override
     public void deleteDespacho(Long idDespacho) {
         Optional<Despacho> despacho = despachoRepository.findById(idDespacho);
         if(!despacho.isPresent()){
-            throw new DespachoNotFoundException("¡No es posible eliminar! No existe despacho con el ID:" + idDespacho);
+            throw new DespachoNotFoundException("No se puede eliminar: no existe un despacho #" + idDespacho + ".");
         }else {
             despachoRepository.deleteById(idDespacho);
         }
@@ -63,7 +63,7 @@ public class DespachoServiceImpl implements DespachoService{
     @Override
     public Despacho findById(Long idDespacho) {
         Optional<Despacho> despacho = despachoRepository.findById(idDespacho);
-        if(!despacho.isPresent()) throw new DespachoNotFoundException("¡No existe despacho con el ID:" + idDespacho);
+        if(!despacho.isPresent()) throw new DespachoNotFoundException("No se encontró un despacho #" + idDespacho + ".");
         return despacho.get();
     }
 }

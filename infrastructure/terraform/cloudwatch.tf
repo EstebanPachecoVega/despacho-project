@@ -1,9 +1,9 @@
-# ─── Metric Filter para errores en logs de ECS ────────────────────────
+# ─── Metric Filter para errores en logs de EKS ────────────────────────
 
-resource "aws_cloudwatch_log_metric_filter" "ecs_errors" {
-  name           = "${var.project_name}-ecs-errors"
+resource "aws_cloudwatch_log_metric_filter" "eks_errors" {
+  name           = "${var.project_name}-eks-errors"
   pattern        = "?ERROR ?Exception ?Error"
-  log_group_name = aws_cloudwatch_log_group.ecs.name
+  log_group_name = aws_cloudwatch_log_group.eks.name
 
   metric_transformation {
     name      = "ErrorCount"
@@ -12,42 +12,10 @@ resource "aws_cloudwatch_log_metric_filter" "ecs_errors" {
   }
 }
 
-# ─── Alarmas ECS ──────────────────────────────────────────────────────
+# ─── Alarma EKS ───────────────────────────────────────────────────────
 
-resource "aws_cloudwatch_metric_alarm" "ecs_cpu" {
-  alarm_name          = "${var.project_name}-ecs-cpu-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/ECS"
-  period              = "300"
-  statistic           = "Average"
-  threshold           = "80"
-  alarm_description   = "Alarma si CPU de ECS supera 80% por 10 minutos"
-  dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.app.name
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "ecs_memory" {
-  alarm_name          = "${var.project_name}-ecs-memory-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "MemoryUtilization"
-  namespace           = "AWS/ECS"
-  period              = "300"
-  statistic           = "Average"
-  threshold           = "80"
-  alarm_description   = "Alarma si memoria de ECS supera 80% por 10 minutos"
-  dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = aws_ecs_service.app.name
-  }
-}
-
-resource "aws_cloudwatch_metric_alarm" "ecs_errors" {
-  alarm_name          = "${var.project_name}-ecs-errors-high"
+resource "aws_cloudwatch_metric_alarm" "eks_errors" {
+  alarm_name          = "${var.project_name}-eks-errors-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "1"
   metric_name         = "ErrorCount"
@@ -55,7 +23,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_errors" {
   period              = "300"
   statistic           = "Sum"
   threshold           = "10"
-  alarm_description   = "Alarma si hay mas de 10 errores en logs de ECS en 5 minutos"
+  alarm_description   = "Alarma si hay mas de 10 errores en logs de EKS en 5 minutos"
 }
 
 # ─── Alarmas EC2 (MySQL) ──────────────────────────────────────────────
@@ -104,23 +72,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/ECS", "CPUUtilization", "ClusterName", aws_ecs_cluster.main.name, "ServiceName", aws_ecs_service.app.name],
-            ["AWS/ECS", "MemoryUtilization", "ClusterName", aws_ecs_cluster.main.name, "ServiceName", aws_ecs_service.app.name]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "ECS - CPU y Memoria"
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          metrics = [
             ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.db.id],
             ["AWS/EC2", "StatusCheckFailed", "InstanceId", aws_instance.db.id]
           ]
@@ -132,30 +83,31 @@ resource "aws_cloudwatch_dashboard" "main" {
       },
       {
         type   = "metric"
-        x      = 0
-        y      = 6
+        x      = 12
+        y      = 0
         width  = 12
         height = 6
         properties = {
           metrics = [
-            ["${var.project_name}", "ErrorCount"]
+            ["AWS/EKS", "node_ready_count", "ClusterName", aws_eks_cluster.main.name],
+            [var.project_name, "ErrorCount"]
           ]
           period = 300
-          stat   = "Sum"
+          stat   = "Average"
           region = var.aws_region
-          title  = "Errores en logs de ECS"
+          title  = "EKS - Nodos Ready y Errores"
         }
       },
       {
         type   = "log"
-        x      = 12
+        x      = 0
         y      = 6
-        width  = 12
+        width  = 24
         height = 6
         properties = {
-          query  = "SOURCE '/ecs/${var.project_name}' | fields @timestamp, @logStream, @message | filter @message like /ERROR|Exception/ | sort @timestamp desc | limit 20"
+          query  = "SOURCE '/aws/eks/${var.eks_cluster_name}/cluster' | fields @timestamp, @logStream, @message | filter @message like /ERROR|Exception/ | sort @timestamp desc | limit 20"
           region = var.aws_region
-          title  = "Ultimos errores en ECS"
+          title  = "Ultimos errores en EKS"
         }
       }
     ]

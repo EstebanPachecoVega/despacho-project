@@ -3,7 +3,9 @@ import Swal from "sweetalert2";
 import axios from "axios";
 
 export const FormDespacho = ({ venta, onClose }) => {
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm();
+
+  const today = new Date().toISOString().split("T")[0];
 
   const onSubmit = async (data) => {
     console.log("onSubmit ejecutado");
@@ -41,17 +43,27 @@ export const FormDespacho = ({ venta, onClose }) => {
         }
       );
       Swal.fire({
-        title: "Despacho registrado 🛻!",
-        text: "El despacho ha sido generado con éxito en la base de datos",
+        title: "¡Despacho registrado!",
+        text: `El despacho para la orden #${venta.idVenta} (${venta.direccionCompra}) ha sido generado exitosamente.`,
         icon: "success",
         confirmButtonText: "Aceptar",
       });
       onClose();
     } catch (error) {
       console.error("Error en la solicitud:", error);
+      const serverMsg = error.response?.data?.message;
+      const fieldErrors = error.response?.data?.errors;
+      let errorText = serverMsg || "Ocurrió un error al registrar el despacho.";
+
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        errorText += "\n\n" + Object.entries(fieldErrors)
+          .map(([campo, mensaje]) => `• ${campo}: ${mensaje}`)
+          .join("\n");
+      }
+
       Swal.fire({
-        title: "Error",
-        text: error.response?.data?.message || "Ocurrió un error al registrar el despacho",
+        title: "Error al generar despacho",
+        text: errorText,
         icon: "error",
         confirmButtonText: "Aceptar",
       });
@@ -70,10 +82,24 @@ export const FormDespacho = ({ venta, onClose }) => {
           <label className="block font-bold mb-2">Fecha de despacho</label>
           <input
             type="date"
+            min={today}
             placeholder="Ingresa fecha de despacho"
-            className="border border-gray-300 rounded-lg block w-full p-1"
-            {...register("fechaDespacho", { required: true })}
+            className={`border rounded-lg block w-full p-1 ${errors.fechaDespacho ? "border-red-500" : "border-gray-300"}`}
+            {...register("fechaDespacho", {
+              required: "Debes seleccionar una fecha de entrega",
+              validate: (value) => {
+                if (!value) return true;
+                const selected = new Date(value + "T00:00:00");
+                const now = new Date(today + "T00:00:00");
+                return selected >= now || "No puedes seleccionar una fecha anterior a hoy";
+              },
+            })}
           />
+          {errors.fechaDespacho && (
+            <span className="text-red-500 text-sm mt-1 block text-left">
+              {errors.fechaDespacho.message}
+            </span>
+          )}
         </div>
         <div className="mb-5">
           <label className="block font-bold mb-2">Patente de camión</label>

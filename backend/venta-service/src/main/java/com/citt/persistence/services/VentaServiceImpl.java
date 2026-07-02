@@ -52,7 +52,7 @@ public class VentaServiceImpl implements VentaService{
             // Guardar la venta actualizada en la BD
             return ventaRepository.save(ventaDB);
         } else {
-            throw new VentaNotFoundException("!No es posible actualizar! No existe venta con ID: " + idVenta);
+            throw new VentaNotFoundException("No se encontró la orden de compra #" + idVenta + ". Verifica que exista en el sistema.");
         }
     }
 
@@ -60,7 +60,7 @@ public class VentaServiceImpl implements VentaService{
     public void deleteVenta(Long idVenta) {
         Optional<Venta> venta = ventaRepository.findById(idVenta);
         if(!venta.isPresent()) {
-            throw new VentaNotFoundException("¡No es posible eliminar! No existe venta con el ID: " + idVenta);
+            throw new VentaNotFoundException("No se puede eliminar: no existe una orden de compra #" + idVenta + ".");
         }else {
             ventaRepository.deleteById(idVenta);
         }
@@ -69,7 +69,7 @@ public class VentaServiceImpl implements VentaService{
     @Override
     public Venta findById(Long idVenta) {
         Optional<Venta> venta = ventaRepository.findById(idVenta);
-        if(!venta.isPresent()) throw new VentaNotFoundException("Venta no encontrada con el ID: " + idVenta);
+        if(!venta.isPresent()) throw new VentaNotFoundException("No se encontró la orden de compra #" + idVenta + ".");
         return venta.get();
     }
 }
