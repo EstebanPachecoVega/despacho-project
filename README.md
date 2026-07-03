@@ -206,7 +206,6 @@ MySQL no disponible al inicio:
 
 Orden de arranque en K8s:
   → init container wait-for-mysql (busybox): espera puerto 3306
-  → init container create-schemas (mysql:8-oracle): CREATE SCHEMA IF NOT EXISTS
   → Contenedor principal: Hibernate crea tablas → data.sql inserta seed data
 ```
 
@@ -334,8 +333,8 @@ despacho-project/
 │       ├── kustomization.yaml
 │       ├── namespace.yaml
 │       ├── app-configmap.yaml
-│       ├── backend-despachos.yaml     # Deployment + Service + init containers
-│       ├── backend-ventas.yaml        # Deployment + Service + init containers
+│       ├── backend-despachos.yaml     # Deployment + Service + init container
+│       ├── backend-ventas.yaml        # Deployment + Service + init container
 │       └── frontend.yaml              # Deployment + LoadBalancer Service
 ├── .github/
 │   └── workflows/
@@ -396,8 +395,8 @@ El directorio `k8s/` contiene los manifiestos para desplegar en EKS:
 |------------|------|--------|
 | `namespace.yaml` | Namespace | `despacho-project` |
 | `app-configmap.yaml` | ConfigMap | Configuración de base de datos |
-| `backend-despachos.yaml` | Deployment + ClusterIP Service | 8080 | `wait-for-mysql` (busybox) + `create-schemas` (mysql:8-oracle) |
-| `backend-ventas.yaml` | Deployment + ClusterIP Service | 8081 | `wait-for-mysql` (busybox) + `create-schemas` (mysql:8-oracle) |
+| `backend-despachos.yaml` | Deployment + ClusterIP Service | 8080 | `wait-for-mysql` (busybox) |
+| `backend-ventas.yaml` | Deployment + ClusterIP Service | 8081 | `wait-for-mysql` (busybox) |
 | `frontend.yaml` | Deployment + LoadBalancer Service | 80 |
 
 Los nodos EKS están en **subredes privadas** con salida a internet vía NAT Gateway.
@@ -642,7 +641,7 @@ VITE_API_VENTAS_URL=http://<LB_DNS>:8081
 - [x] Seed data automático con `data.sql` (INSERT IGNORE en cada arranque)
 - [x] Validación de fecha de despacho (sin fecha, sin fechas pasadas)
 - [x] IDs secuenciales con `GenerationType.IDENTITY` (sin saltos)
-- [x] Init containers en K8s (`wait-for-mysql` + `create-schemas`)
+- [x] Init container en K8s (`wait-for-mysql`)
 - [x] Manejo de errores en frontend con SweetAlert2 (loading, error, empty)
 - [x] Mensajes de error intuitivos en backend (español)
 - [x] Orquestación local con Docker Compose (MySQL + 2 backends + frontend)
