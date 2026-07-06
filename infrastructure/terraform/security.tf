@@ -19,3 +19,24 @@ resource "aws_security_group" "db" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+# ─── Regla de health check del LoadBalancer para EKS ─────────────────
+# Permite al Classic Load Balancer acceder a los NodePorts en los nodos worker
+
+data "aws_security_group" "eks_node" {
+  filter {
+    name   = "group-name"
+    values = ["${var.eks_cluster_name}-node-*"]
+  }
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_security_group_rule" "eks_lb_health" {
+  type              = "ingress"
+  from_port         = 30000
+  to_port           = 32767
+  protocol          = "tcp"
+  cidr_blocks       = [aws_vpc.main.cidr_block]
+  security_group_id = data.aws_security_group.eks_node.id
+  description       = "Permitir health checks del LoadBalancer en NodePorts"
+}
